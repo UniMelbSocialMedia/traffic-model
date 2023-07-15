@@ -12,11 +12,12 @@ from utils.masked_mae_loss import Masked_MAE_Loss
 
 def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str, model_output_path: str,
         load_saved_model: bool, model_configs: dict, merge_emb: bool):
+
     model = SGATTransformer(device=device,
                             sgat_first_in_f_size=1,
-                            sgat_n_layers=2,
-                            sgat_out_f_sizes=[16, 16],
-                            sgat_n_heads=[8, 1],
+                            sgat_n_layers=1,
+                            sgat_out_f_sizes=[16],
+                            sgat_n_heads=[1],
                             sgat_alpha=0.2,
                             sgat_dropout=0.2,
                             sgat_edge_dim=model_configs['edge_dim'],
@@ -40,7 +41,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
 
     # mse_loss_fn = nn.L1Loss()
     mse_loss_fn = Masked_MAE_Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0004)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.75)
     optimizer.zero_grad()
 
@@ -128,7 +129,8 @@ if __name__ == '__main__':
         dec_seq_len = configs['dec_seq_len'] if configs['dec_seq_len'] else 12
         enc_features = configs['enc_features'] if configs['enc_features'] else 5
 
-    device = 'cuda'
+        merge_emb = configs['merge_emb'] if configs['merge_emb'] else False
+        device = configs['device'] if configs['device'] else 'cpu'
 
     data_configs = {
         'num_of_vertices': num_of_vertices,
@@ -160,7 +162,7 @@ if __name__ == '__main__':
         model_input_path=model_input_path,
         model_output_path=model_output_path,
         load_saved_model=load_saved_model,
-        merge_emb=False,
+        merge_emb=merge_emb,
         model_configs={
             'input_dim': input_dim,
             'edge_dim': edge_dim,

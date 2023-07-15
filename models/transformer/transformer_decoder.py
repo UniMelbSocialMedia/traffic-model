@@ -22,11 +22,12 @@ class TransformerDecoder(nn.Module):
                                              alpha=sgat_settings['alpha'],
                                              dropout=sgat_settings['dropout'],
                                              edge_dim=sgat_settings['edge_dim'])
-        self.position_embedding = PositionalEmbedding(max_lookup_len, embed_dim)
         # by merging embeddings we increase the num embeddings
         self.merge_embed = merge_embed
-        if merge_embed:
-            embed_dim = embed_dim * 2
+        # if merge_embed:
+        #     embed_dim = embed_dim * 2
+
+        self.position_embedding = PositionalEmbedding(max_lookup_len, embed_dim)
 
         self.conv_q_layer = nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
 
@@ -54,6 +55,8 @@ class TransformerDecoder(nn.Module):
         )
 
         self.fc_out = nn.Linear(embed_dim, out_dim)
+
+        self.norm_temp = nn.LayerNorm(embed_dim)
 
     def calculate_masked_src(self, x, conv_q, tgt_mask, device='cuda'):
         batch_size = x.shape[0]
@@ -83,11 +86,12 @@ class TransformerDecoder(nn.Module):
         if x is not None:
             embed_x = self.embedding(x)
         if graph_x is not None:
-            embed_graph_x = self.graph_embedding(graph_x).transpose(2, 1)
+            embed_graph_x = self.graph_embedding(graph_x).transpose(0, 1)
 
         embed_out = None
         if embed_graph_x is not None and embed_x is not None and self.merge_embed:
-            embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
+            # embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
+            embed_out = self.norm_temp(embed_x + embed_graph_x)
         elif embed_graph_x is None and embed_x is not None:
             embed_out = embed_x
         elif embed_graph_x is not None and embed_x is None:
