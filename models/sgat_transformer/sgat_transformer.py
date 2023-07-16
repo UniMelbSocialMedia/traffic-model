@@ -121,6 +121,9 @@ class SGATTransformer(nn.Module):
                 if i+1 < self.transformer_dec_seq_len:
                     y[:, i+1] = dec_out[:, i]
 
+                    for batch in range(y.shape[0]):
+                        graph_y[batch][i + 1].x = dec_out[batch, i]
+
                 final_out[:, i] = dec_out[:, i]
 
             return final_out
