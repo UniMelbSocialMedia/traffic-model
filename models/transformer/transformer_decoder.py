@@ -124,7 +124,14 @@ class TransformerDecoder(nn.Module):
                     enc_xs.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
                 else:
                     start = idx_k * self.per_enc_feature_len
-                    enc_xs.append(f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
+
+                    enc_x1 = f_layer(enc_x[0][:, 0: 12].transpose(2, 1)).transpose(2, 1)
+                    enc_x2 = f_layer(enc_x[0][:, 12: 24].transpose(2, 1)).transpose(2, 1)
+                    enc_x3 = f_layer(enc_x[0][:, 24: 36].transpose(2, 1)).transpose(2, 1)
+
+                    enc_xs.append(torch.concat((enc_x1, enc_x2, enc_x3), dim=-2))
+
+                    # enc_xs.append(f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
             # enc_x1 = self.conv_k1_layers[idx](enc_x[0].transpose(2, 1)).transpose(2, 1)
             # enc_x2 = self.conv_k2_layers[idx](enc_x[1].transpose(2, 1)).transpose(2, 1)

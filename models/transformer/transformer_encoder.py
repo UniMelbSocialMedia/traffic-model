@@ -38,7 +38,8 @@ class TransformerEncoder(nn.Module):
             [nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
              for _ in range(num_layers)])
 
-        self.layers = nn.ModuleList([EncoderBlock(embed_dim, expansion_factor, n_heads, dropout) for i in range(num_layers)])
+        self.layers = nn.ModuleList(
+            [EncoderBlock(embed_dim, expansion_factor, n_heads, dropout) for i in range(num_layers)])
 
     def forward(self, x, graph_x, lookup_idx=None, local_trends=True):
         embed_x = None
@@ -62,12 +63,20 @@ class TransformerEncoder(nn.Module):
         embed_out = embed_out.permute(1, 0, 2)
 
         out = self.positional_encoder(embed_out, lookup_idx)
+        per_f_len = 12
+        features = 3
         for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
             if local_trends:
                 out_transposed = out.transpose(2, 1)
-                q = conv_q(out_transposed).transpose(2, 1)
-                k = conv_k(out_transposed).transpose(2, 1)
-                v = out
+                q = torch.concat((conv_q(out_transposed[:, :, : per_f_len]).transpose(2, 1),
+                                  conv_q(out_transposed[:, :, per_f_len: per_f_len * 2]).transpose(2, 1),
+                                  conv_q(out_transposed[:, :, per_f_len * 2: per_f_len * 3]).transpose(2, 1)), dim=-2)
+
+                k = torch.concat((conv_k(out_transposed[:, :, : per_f_len]).transpose(2, 1),
+                                  conv_k(out_transposed[:, :, per_f_len: per_f_len * 2]).transpose(2, 1),
+                                  conv_k(out_transposed[:, :, per_f_len * 2: per_f_len * 3]).transpose(2, 1)), dim=-2)
+
+                v = torch.concat((out[:, : per_f_len], out[:, per_f_len: per_f_len * 2], out[:, per_f_len * 2: per_f_len * 3]), dim=-2)
             else:
                 q, k, v = out, out, out
 

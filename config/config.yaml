@@ -1,6 +1,6 @@
 batch_size: 4
 epochs: 20
-model_output_path: "output/model/pems08/multi-cross-attn/base/epoch_v1_{}_model.pt"
+model_output_path: "output/model/pems08/base/epoch_v1_{}_model.pt"
 model_input_path: "output/model/pems08/epoch_dec_conv_global_rep_v3_17_model.pt"
 load_saved_model: False
 edge_dim: 1
