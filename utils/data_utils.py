@@ -219,6 +219,6 @@ def create_lookup_index(merge=False):
     hr_lookup_idx = [x + max_val for x in hr_lookup_idx]
 
     if merge:
-        return (wk_lookup_idx + dy_lookup_idx + hr_lookup_idx), max_val
+        return (wk_lookup_idx + wk_tgt_lookup_idx + dy_lookup_idx + hr_lookup_idx), max_val
 
     return (wk_lookup_idx, wk_tgt_lookup_idx, dy_lookup_idx, hr_lookup_idx), max_val

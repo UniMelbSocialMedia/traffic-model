@@ -50,12 +50,6 @@ class TransformerDecoder(nn.Module):
             for j in range(num_layers)
         ])
 
-        # self.conv_k1_layers = nn.ModuleList([nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for _ in range(num_layers)])
-        # self.conv_k2_layers = nn.ModuleList([nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for _ in range(num_layers)])
-        # self.conv_k3_layers = nn.ModuleList([nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for _ in range(num_layers)])
-        # self.conv_k4_layers = nn.ModuleList([nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for _ in range(num_layers)])
-        # self.conv_k5_layers = nn.ModuleList([nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for _ in range(num_layers)])
-
         self.layers = nn.ModuleList(
             [
                 DecoderBlock(embed_dim, expansion_factor=expansion_factor, n_heads=n_heads, dropout=dropout,
@@ -125,13 +119,6 @@ class TransformerDecoder(nn.Module):
                 else:
                     start = idx_k * self.per_enc_feature_len
                     enc_xs.append(f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
-
-            # enc_x1 = self.conv_k1_layers[idx](enc_x[0].transpose(2, 1)).transpose(2, 1)
-            # enc_x2 = self.conv_k2_layers[idx](enc_x[1].transpose(2, 1)).transpose(2, 1)
-            # enc_x3 = self.conv_k3_layers[idx](enc_x[2].transpose(2, 1)).transpose(2, 1)
-            # enc_x4 = self.conv_k4_layers[idx](enc_x[3].transpose(2, 1)).transpose(2, 1)
-            # enc_x5 = self.conv_k5_layers[idx](enc_x[4].transpose(2, 1)).transpose(2, 1)
-            # x = layer(x, [enc_x1, enc_x2, enc_x3, enc_x4, enc_x5], tgt_mask)
 
             x = layer(x, enc_xs, tgt_mask)
 
