@@ -20,7 +20,8 @@ class TransformerEncoder(nn.Module):
                                              n_heads=sgat_settings['n_heads'],
                                              alpha=sgat_settings['alpha'],
                                              dropout=sgat_settings['dropout'],
-                                             edge_dim=sgat_settings['edge_dim'])
+                                             edge_dim=sgat_settings['edge_dim'],
+                                             seq_len=seq_len)
 
         # by merging embeddings we increase the num embeddings
         self.merge_embed = merge_embed

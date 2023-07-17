@@ -1,17 +1,18 @@
 batch_size: 4
 epochs: 20
-model_output_path: "output/model/pems08/sgat/epoch_{}_model.pt"
+model_output_path: "output/model/pems08/sgat/epoch_v3_{}_model.pt"
 model_input_path: "output/model/pems08/epoch_dec_conv_global_rep_v1_6_model.pt"
-load_saved_model: True
+load_saved_model: False
 edge_dim: 1
 input_dim: 1
 enc_seq_len: 36
 dec_seq_len: 12
 dec_seq_offset: 1
 
-adj_filename: "data/PEMS08/PEMS08.csv"
+adj_filename: "data/PEMS08/PEMS08_dij.csv"
 graph_signal_matrix_filename: "data/PEMS08/PEMS08.npz"
 graph_signal_matrix_filename_asgtnn: "data/PEMS08/PEMS08_r1_d1_w1.npz"
+graph_signal_matrix_filename_pdformer: "data/PEMS08/PEMS08_pdformer.npy"
 num_of_vertices: 170
 edge_attr_scaling: True
 points_per_hour: 12
