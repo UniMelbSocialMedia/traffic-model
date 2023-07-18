@@ -69,8 +69,8 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
               f" | mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss}"
               f" | rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}")
 
-        if min_val_loss > rmse_val_loss:
-            min_val_loss = rmse_val_loss
+        if min_val_loss > mae_val_loss:
+            min_val_loss = mae_val_loss
             print('Saving Model...')
             best_model_path = model_output_path.format(str(epoch))
             torch.save(model.state_dict(), best_model_path)  # saving model
