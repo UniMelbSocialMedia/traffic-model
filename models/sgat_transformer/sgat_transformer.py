@@ -104,8 +104,7 @@ class SGATTransformer(nn.Module):
 
     def forward(self, x, graph_x, y=None, graph_y=None, train=True):
         # TODO: We can't guarentee that always x presents. So have to replace the way of finding shape
-        emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * 2
-        enc_outs = torch.zeros((self.enc_features, x.shape[0] * x.shape[2], x.shape[1], emb_dim)).to(self.device)
+        enc_outs = torch.zeros((self.enc_features, x.shape[0] * x.shape[2], x.shape[1], self.emb_dim)).to(self.device)
 
         for idx, encoder in enumerate(self.encoders):
             x_i = x[:, :, :, idx: idx + 1] if x is not None else None
@@ -128,8 +127,9 @@ class SGATTransformer(nn.Module):
                 dec_out = self.decoder(y, graph_y, enc_outs, tgt_mask=tgt_mask, local_trends=True,
                                        lookup_idx=self.lookup_idx_dec, device=self.device)
 
-                if i < dec_out_len:
-                    y[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
+                y[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
+                for batch in range(y.shape[0]):
+                    graph_y[batch][i + self.dec_seq_offset].x = dec_out[batch, i + self.dec_out_start_idx]
 
                 final_out[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
 

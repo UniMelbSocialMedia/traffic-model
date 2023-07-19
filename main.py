@@ -14,9 +14,9 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
         load_saved_model: bool, model_configs: dict):
     model = SGATTransformer(device=device,
                             sgat_first_in_f_size=1,
-                            sgat_n_layers=2,
-                            sgat_out_f_sizes=[16, 16],
-                            sgat_n_heads=[8, 1],
+                            sgat_n_layers=1,
+                            sgat_out_f_sizes=[16],
+                            sgat_n_heads=[8],
                             sgat_alpha=0.2,
                             sgat_dropout=0.2,
                             sgat_edge_dim=model_configs['edge_dim'],
@@ -45,14 +45,17 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
     # mse_loss_fn = nn.L1Loss()
     mse_loss_fn = Masked_MAE_Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1, eta_min=0.00005)
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
+    # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1, eta_min=0.00005)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=1, gamma=0.85)
     optimizer.zero_grad()
 
     min_val_loss = np.inf
 
     for epoch in range(epochs):
         print(f"LR: {lr_scheduler.get_last_lr()}")
+
+        if lr_scheduler.get_last_lr()[0] < 0.0001:
+            optimizer.param_groups[0]['lr'] = 0.001
 
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
@@ -72,8 +75,8 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
               f" | mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss}"
               f" | rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}")
 
-        if min_val_loss > rmse_val_loss:
-            min_val_loss = rmse_val_loss
+        if min_val_loss > mae_val_loss:
+            min_val_loss = mae_val_loss
             print('Saving Model...')
             best_model_path = model_output_path.format(str(epoch))
             torch.save(model.state_dict(), best_model_path)  # saving model
