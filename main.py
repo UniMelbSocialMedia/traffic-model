@@ -18,7 +18,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                             sgat_out_f_sizes=[16],
                             sgat_n_heads=[8],
                             sgat_alpha=0.2,
-                            sgat_dropout=0.2,
+                            sgat_dropout=0.6,
                             sgat_edge_dim=model_configs['edge_dim'],
                             transformer_merge_emb=model_configs['merge_emb'],
                             transformer_enc_seq_len=model_configs['enc_seq_len'],
