@@ -96,10 +96,10 @@ class DataLoader:
                     zeros = time_series.shape[0] - np.count_nonzero(time_series)
                     zeros_tgt = time_series_tgt.shape[0] - np.count_nonzero(time_series_tgt)
 
-                    if zeros >= 3:
+                    if zeros >= 4:
                         idx_delete.append(i)
 
-                    if zeros_tgt >= 3:
+                    if zeros_tgt >= 4:
                         idx_tgt_delete.append(i)
 
                 # avoid deleting all the sensor data
@@ -118,7 +118,7 @@ class DataLoader:
             records_time_idx[record_key] = np.array(sensor_means).transpose(1, 0, 2)
             records_time_tgt_idx[record_key] = np.array(sensor_tgt_means).transpose(1, 0, 2)
 
-            return records_time_idx, records_time_tgt_idx
+        return records_time_idx, records_time_tgt_idx
 
     # generate training, validation and test data
     def load_node_data_file(self, graph_signal_matrix_filename, save=False):
@@ -201,24 +201,28 @@ class DataLoader:
         testing_y_set = np.array(all_targets[split_line2:])
 
         # Derive global representation vector for each sensor for similar time steps
-        # records_time_idx, records_time_tgt_idx = self._derive_rep_timeline(training_x_set, training_y_set, points_per_week)
+        records_time_idx, records_time_tgt_idx = self._derive_rep_timeline(training_x_set, training_y_set, points_per_week)
 
         new_train_x_set = np.zeros(
-            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3] - 1))
+            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3]))
         for i, x in enumerate(training_x_set):
-            # new_train_x_set[i] = self._fill_missing_values(x, records_time_idx, records_time_tgt_idx)
-            new_train_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key]), axis=-1)
+            new_train_x_set[i] = x
 
         new_val_x_set = np.zeros(
-            (validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2],
-             validation_x_set.shape[3] - 1))
+            (validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2], validation_x_set.shape[3]))
         for i, x in enumerate(validation_x_set):
-            new_val_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key]), axis=-1)
+            new_val_x_set[i] = x
 
         new_test_x_set = np.zeros(
-            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3] - 1))
+            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3]))
         for i, x in enumerate(testing_x_set):
-            new_test_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key]), axis=-1)
+            new_test_x_set[i] = x
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -311,7 +315,7 @@ class DataLoader:
             if self.enc_features > 1:
                 batched_xs[idx] = torch.Tensor([xs[idx][:, :, 0:1], xs[idx][:, :, 1:2], xs[idx][:, :, 2:3], xs[idx][:, :, 3:4]]).to(device)
             else:
-                batched_xs[idx] = torch.Tensor(np.concatenate(np.array([xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)).to(device)
+                batched_xs[idx] = torch.Tensor(np.concatenate(np.array([xs[idx][:, :, 4:5], xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)).to(device)
 
         batched_xs = torch.stack(batched_xs)
 

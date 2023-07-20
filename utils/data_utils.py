@@ -203,6 +203,8 @@ def search_index(max_len, num_of_depend=1, num_for_predict=12, points_per_hour=1
 
 
 def create_lookup_index(merge=False):
+    global_rep_idx = search_index(max_len=0,
+                                  units=24 * 14)
     wk_lookup_idx = search_index(max_len=0,
                                  units=24 * 7)
     wk_tgt_lookup_idx = search_index(max_len=0,
@@ -212,13 +214,14 @@ def create_lookup_index(merge=False):
                                  units=24)
     hr_lookup_idx = search_index(max_len=0,
                                  units=1)
-    max_val = min((wk_lookup_idx, wk_tgt_lookup_idx, dy_lookup_idx, hr_lookup_idx))[0] * -1
+    max_val = min((global_rep_idx, wk_lookup_idx, wk_tgt_lookup_idx, dy_lookup_idx, hr_lookup_idx))[0] * -1
+    global_rep_idx = [x + max_val for x in global_rep_idx]
     wk_lookup_idx = [x + max_val for x in wk_lookup_idx]
     wk_tgt_lookup_idx = [x + max_val for x in wk_tgt_lookup_idx]
     dy_lookup_idx = [x + max_val for x in dy_lookup_idx]
     hr_lookup_idx = [x + max_val for x in hr_lookup_idx]
 
     if merge:
-        return (wk_lookup_idx + dy_lookup_idx + hr_lookup_idx), max_val
+        return (global_rep_idx + wk_lookup_idx + dy_lookup_idx + hr_lookup_idx), max_val
 
-    return (wk_lookup_idx, wk_tgt_lookup_idx, dy_lookup_idx, hr_lookup_idx), max_val
+    return (global_rep_idx, wk_lookup_idx, dy_lookup_idx, hr_lookup_idx), max_val
