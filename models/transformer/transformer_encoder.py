@@ -9,7 +9,7 @@ from models.transformer.token_embedding import TokenEmbedding
 
 class TransformerEncoder(nn.Module):
     def __init__(self, seq_len, input_dim, embed_dim, num_layers=2, expansion_factor=4, n_heads=8, sgat_settings=None,
-                 merge_embed=False, dropout=0.2, max_lookup_len=0):
+                 merge_embed=False, dropout=0.2, max_lookup_len=0, per_enc_feature_len=12):
         super(TransformerEncoder, self).__init__()
 
         # embedding
@@ -22,6 +22,9 @@ class TransformerEncoder(nn.Module):
                                              dropout=sgat_settings['dropout'],
                                              edge_dim=sgat_settings['edge_dim'])
 
+        self.enc_features = int(seq_len / per_enc_feature_len)
+        self.per_enc_feature_len = per_enc_feature_len
+
         # by merging embeddings we increase the num embeddings
         self.merge_embed = merge_embed
         if merge_embed:
@@ -30,13 +33,15 @@ class TransformerEncoder(nn.Module):
         self.positional_encoder = PositionalEmbedding(max_lookup_len, embed_dim)
 
         # to do local trend analysis
-        self.conv_q_layers = nn.ModuleList(
-            [nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
-             for _ in range(num_layers)])
+        self.conv_q = nn.ModuleList([
+            nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
+            for _ in range(num_layers)
+        ])
 
-        self.conv_k_layers = nn.ModuleList(
-            [nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
-             for _ in range(num_layers)])
+        self.conv_k = nn.ModuleList([
+            nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
+            for _ in range(num_layers)
+        ])
 
         self.layers = nn.ModuleList([EncoderBlock(embed_dim, expansion_factor, n_heads, dropout) for i in range(num_layers)])
 
@@ -62,11 +67,20 @@ class TransformerEncoder(nn.Module):
         embed_out = embed_out.permute(1, 0, 2)
 
         out = self.positional_encoder(embed_out, lookup_idx)
-        for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
+        for idx, (layer, conv_q, conv_k) in enumerate(zip(self.layers, self.conv_q, self.conv_k)):
             if local_trends:
                 out_transposed = out.transpose(2, 1)
-                q = conv_q(out_transposed).transpose(2, 1)
-                k = conv_k(out_transposed).transpose(2, 1)
+
+                q = torch.zeros_like(out)
+                k = torch.zeros_like(out)
+                for idx_k in range(self.enc_features):
+                    start = idx_k * self.per_enc_feature_len
+                    q_ = conv_q(out_transposed[:, :, start: start + self.per_enc_feature_len]).transpose(2, 1)
+                    k_ = conv_k(out_transposed[:, :, start: start + self.per_enc_feature_len]).transpose(2, 1)
+
+                    q[:, start: start + self.per_enc_feature_len] = q_
+                    k[:, start: start + self.per_enc_feature_len] = k_
+
                 v = out
             else:
                 q, k, v = out, out, out

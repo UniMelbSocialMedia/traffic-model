@@ -77,6 +77,7 @@ class SGATTransformer(nn.Module):
                                sgat_settings=sgat_settings,
                                merge_embed=transformer_merge_emb,
                                dropout=transformer_dropout,
+                               per_enc_feature_len=transformer_per_enc_feature_len,
                                max_lookup_len=max_lookup_len_enc if max_lookup_len_enc else transformer_enc_seq_len)
             for _ in range(transformer_enc_features)
         ])
