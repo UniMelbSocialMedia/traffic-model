@@ -202,7 +202,7 @@ def search_index(max_len, num_of_depend=1, num_for_predict=12, points_per_hour=1
     return x_idx
 
 
-def create_lookup_index(merge=False):
+def create_lookup_index(merge=True):
     wk_lookup_idx = search_index(max_len=0,
                                  units=24 * 7)
     wk_tgt_lookup_idx = search_index(max_len=0,

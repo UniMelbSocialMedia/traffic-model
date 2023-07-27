@@ -120,6 +120,10 @@ class DataLoader:
 
             return records_time_idx, records_time_tgt_idx
 
+    def _derive_derivative(self, x):
+        shp = x.shape
+        return np.concatenate((x, np.concatenate((np.zeros((shp[0], 1, shp[2], shp[3])), np.diff(x, axis=1)), axis=1)), axis=-1)
+
     # generate training, validation and test data
     def load_node_data_file(self, graph_signal_matrix_filename, save=False):
         data_seq = np.load(graph_signal_matrix_filename)['data']  # (sequence_length, num_of_vertices, num_of_features)
@@ -228,6 +232,14 @@ class DataLoader:
         testing_y_set = np.concatenate(
             (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, :]), axis=1)
 
+        # derivaive
+        new_train_x_set = self._derive_derivative(new_train_x_set)
+        new_test_x_set = self._derive_derivative(new_test_x_set)
+        new_val_x_set = self._derive_derivative(new_val_x_set)
+        training_y_set = self._derive_derivative(training_y_set)
+        validation_y_set = self._derive_derivative(validation_y_set)
+        testing_y_set = self._derive_derivative(testing_y_set)
+
         # max-min normalization on input and target values
         (stats_x, x_train, x_val, x_test) = min_max_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
         (stats_y, y_train, y_val, y_test) = min_max_normalize(training_y_set, validation_y_set, testing_y_set)
@@ -243,7 +255,7 @@ class DataLoader:
         self.n_batch_val = int(len(x_val) / self.batch_size)
 
         data = {'train': x_train, 'val': x_val, 'test': x_test}
-        y = {'train': y_train[:, :, :, 0:1], 'val': y_val[:, :, :, 0:1], 'test': y_test[:, :, :, 0:1]}
+        y = {'train': y_train[:, :, :, 0:2], 'val': y_val[:, :, :, 0:2], 'test': y_test[:, :, :, 0:2]}
         self.dataset = Dataset(data=data, y=y, stats_x=stats_x, stats_y=stats_y)
 
     def load_edge_data_file(self, filename: str, scaling: bool = True):
@@ -290,7 +302,7 @@ class DataLoader:
         limit = (offset + batch_size) if (offset + batch_size) <= len(xs) else len(xs)
 
         xs = xs[offset: limit, :, :, :]  # [9358, 13, 228, 1]
-        ys = ys[offset: limit, :]
+        ys = ys[offset: limit]
 
         ys_input = np.copy(ys)
         if _type != 'train':
@@ -308,10 +320,12 @@ class DataLoader:
 
             batched_xs_graphs[idx] = [graphs1, graphs2, graphs3, graphs4]
 
+            speed_vals = np.concatenate(np.array([xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)
+            deri_vals = np.concatenate(np.array([xs[idx][:, :, 6:7], xs[idx][:, :, 5:6], xs[idx][:, :, 4:5]]), axis=0)
             if self.enc_features > 1:
-                batched_xs[idx] = torch.Tensor(np.concatenate((xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]), axis=-1)).to(device)
+                batched_xs[idx] = torch.Tensor(np.concatenate((speed_vals, deri_vals), axis=-1)).to(device)
             else:
-                batched_xs[idx] = torch.Tensor(np.concatenate(np.array([xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)).to(device)
+                batched_xs[idx] = torch.Tensor(speed_vals).to(device)
 
         batched_xs = torch.stack(batched_xs)
 
@@ -324,8 +338,8 @@ class DataLoader:
                 graph = self._create_graph(y)
                 graphs_ys.append(to(graph))
 
-            batched_ys[idx] = torch.Tensor(ys_input[idx]).to(device)
-            batch_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
+            batched_ys[idx] = torch.Tensor(ys_input[idx][:, :, 0:1]).to(device)
+            batch_ys_target[idx] = torch.Tensor(ys[idx][:, :, 0:1]).to(device)
             batched_ys_graphs[idx] = graphs_ys
 
         batched_ys = torch.stack(batched_ys)

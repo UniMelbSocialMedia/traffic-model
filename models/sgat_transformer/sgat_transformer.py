@@ -61,7 +61,7 @@ class SGATTransformer(nn.Module):
         max_lookup_len_enc = None
         max_lookup_len_dec = None
         if transformer_lookup_index:
-            self.lookup_idx_enc, max_lookup_len_enc = create_lookup_index(merge=True if transformer_enc_features == 1 else False)
+            self.lookup_idx_enc, max_lookup_len_enc = create_lookup_index()
 
             start_idx_lk_dec = max_lookup_len_enc - transformer_dec_seq_offset
             self.lookup_idx_dec = [i for i in range(start_idx_lk_dec, start_idx_lk_dec + transformer_dec_seq_len)]
