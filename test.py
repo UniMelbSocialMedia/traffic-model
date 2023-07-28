@@ -44,7 +44,6 @@ def test(_type: str,
             mape_loss += mape_loss_val
 
             if batch % 100 == 0:
-                print(f"MAE {mae_loss/(batch + 1)}")
                 logger.info(f"MAE {mae_loss/(batch + 1)}")
 
             offset += data_loader.batch_size

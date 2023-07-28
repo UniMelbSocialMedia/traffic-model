@@ -57,10 +57,8 @@ def train(model: torch.nn.Module,
         mape_tmp_loss = mape_train_loss / float(batch + 1)
         
         out_txt = f"all_batch: {data_loader.n_batch_train} | batch: {batch} | mae_tmp_loss: {mae_tmp_loss} | rmse_tmp_loss: {rmse_tmp_loss} | mape_tmp_loss: {mape_tmp_loss}"
-        if offset % 100 == 0:
+        if offset % 200 == 0:
             logger.info(out_txt)
-        if offset % 500 == 0:
-            print(out_txt)
 
     mae_train_loss = mae_train_loss / float(data_loader.n_batch_train)
     rmse_train_loss = rmse_train_loss / float(data_loader.n_batch_train)

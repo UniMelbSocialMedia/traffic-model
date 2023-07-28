@@ -53,7 +53,6 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
     min_val_loss = np.inf
 
     for epoch in range(epochs):
-        print(f"LR: {lr_scheduler.get_last_lr()}")
         logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
@@ -74,16 +73,14 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                   f"| mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss} " \
                   f"| rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}"
         logger.info(out_txt)
-        print(out_txt)
 
         if min_val_loss > mae_val_loss:
             min_val_loss = mae_val_loss
-            print('Saving Model...')
+            logger.info('Saving Model...')
             best_model_path = model_output_path.format(str(epoch))
             torch.save(model.state_dict(), best_model_path)  # saving model
 
     # testing model
-    print('Testing model...')
     logger.info('Testing model...')
     model.load_state_dict(torch.load(best_model_path))
     mae_test_loss, rmse_test_loss, mape_test_loss = test(_type='test',
@@ -92,7 +89,6 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                                                          device=device,
                                                          seq_offset=model_configs['dec_seq_offset'])
 
-    print(f"mae_test_loss: {mae_test_loss} | rmse_test_loss: {rmse_test_loss} | mape_test_loss: {mape_test_loss}")
     logger.info(f"mae_test_loss: {mae_test_loss} | rmse_test_loss: {rmse_test_loss} | mape_test_loss: {mape_test_loss}")
 
 
