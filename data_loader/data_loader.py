@@ -118,7 +118,7 @@ class DataLoader:
             records_time_idx[record_key] = np.array(sensor_means).transpose(1, 0, 2)
             records_time_tgt_idx[record_key] = np.array(sensor_tgt_means).transpose(1, 0, 2)
 
-            return records_time_idx, records_time_tgt_idx
+        return records_time_idx, records_time_tgt_idx
 
     def _derive_derivative(self, x):
         shp = x.shape
@@ -155,22 +155,6 @@ class DataLoader:
 
             time_idx_sample = np.repeat(np.expand_dims(new_data_seq[idx, :, -1:], axis=0), self.len_input, axis=0)
 
-            # Make the hr_idx repeats for every vertex and then expand dimensions to match sample dim
-            hr_idx_sample = np.expand_dims(
-                np.repeat(np.expand_dims(hrs[:self.len_input], axis=0), self.num_of_vertices, axis=0).transpose((1, 0)),
-                axis=-1)
-            hr_idx_target = np.expand_dims(
-                np.repeat(np.expand_dims(hrs[self.len_input:], axis=0), self.num_of_vertices, axis=0).transpose((1, 0)),
-                axis=-1)
-
-            # Make the wk_dy_idx repeats for every vertex and then expand dimensions to match sample dim
-            wk_dy_idx_sample = np.expand_dims(
-                np.repeat(np.expand_dims(wk_dys[:self.len_input], axis=0), self.num_of_vertices, axis=0).transpose(
-                    (1, 0)), axis=-1)
-            wk_dy_idx_target = np.expand_dims(
-                np.repeat(np.expand_dims(wk_dys[self.len_input:], axis=0), self.num_of_vertices, axis=0).transpose(
-                    (1, 0)), axis=-1)
-
             sample = None
             # if self.num_of_days_target > 0:
             #     sample = np.concatenate((sample, day_sample_target[:, :, 0:1]), axis=2)
@@ -205,24 +189,38 @@ class DataLoader:
         testing_y_set = np.array(all_targets[split_line2:])
 
         # Derive global representation vector for each sensor for similar time steps
-        # records_time_idx, records_time_tgt_idx = self._derive_rep_timeline(training_x_set, training_y_set, points_per_week)
+        records_time_idx, records_time_tgt_idx = self._derive_rep_timeline(training_x_set, training_y_set,
+                                                                           points_per_week)
 
         new_train_x_set = np.zeros(
-            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3] - 1))
+            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3]+1))
         for i, x in enumerate(training_x_set):
-            # new_train_x_set[i] = self._fill_missing_values(x, records_time_idx, records_time_tgt_idx)
-            new_train_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            record_key_yesterday = record_key - 24 * 12
+            record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]), axis=-1)
+            new_train_x_set[i] = x
 
         new_val_x_set = np.zeros(
-            (validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2],
-             validation_x_set.shape[3] - 1))
+            (
+            validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2], validation_x_set.shape[3]+1))
         for i, x in enumerate(validation_x_set):
-            new_val_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            record_key_yesterday = record_key - 24 * 12
+            record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]),
+                               axis=-1)
+            new_val_x_set[i] = x
 
         new_test_x_set = np.zeros(
-            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3] - 1))
+            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3]+1))
         for i, x in enumerate(testing_x_set):
-            new_test_x_set[i] = x[:, :, :-1]
+            record_key = x[0, 0, -1]
+            record_key_yesterday = record_key - 24 * 12
+            record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
+            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]),
+                               axis=-1)
+            new_test_x_set[i] = x
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -231,14 +229,6 @@ class DataLoader:
             (new_val_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, :]), axis=1)
         testing_y_set = np.concatenate(
             (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, :]), axis=1)
-
-        # derivaive
-        new_train_x_set = self._derive_derivative(new_train_x_set)
-        new_test_x_set = self._derive_derivative(new_test_x_set)
-        new_val_x_set = self._derive_derivative(new_val_x_set)
-        training_y_set = self._derive_derivative(training_y_set)
-        validation_y_set = self._derive_derivative(validation_y_set)
-        testing_y_set = self._derive_derivative(testing_y_set)
 
         # max-min normalization on input and target values
         (stats_x, x_train, x_val, x_test) = min_max_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
@@ -321,9 +311,9 @@ class DataLoader:
             batched_xs_graphs[idx] = [graphs1, graphs2, graphs3, graphs4]
 
             speed_vals = np.concatenate(np.array([xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)
-            deri_vals = np.concatenate(np.array([xs[idx][:, :, 6:7], xs[idx][:, :, 5:6], xs[idx][:, :, 4:5]]), axis=0)
+            rep_vals = np.concatenate(np.array([xs[idx][:, :, 3:4], xs[idx][:, :, 4:5], xs[idx][:, :, 3:4]]), axis=0)
             if self.enc_features > 1:
-                batched_xs[idx] = torch.Tensor(np.concatenate((speed_vals, deri_vals), axis=-1)).to(device)
+                batched_xs[idx] = torch.Tensor(np.concatenate((speed_vals, rep_vals), axis=-1)).to(device)
             else:
                 batched_xs[idx] = torch.Tensor(speed_vals).to(device)
 

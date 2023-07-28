@@ -118,14 +118,14 @@ class SGATTransformer(nn.Module):
         tgt_mask = self.create_mask(enc_outs.shape[1], self.device)
 
         if train:
-            dec_out = self.decoder(y, graph_y, enc_outs, tgt_mask=tgt_mask, local_trends=True,
+            dec_out = self.decoder(y, graph_y, enc_outs, tgt_mask=tgt_mask, local_trends=False,
                                    lookup_idx=self.lookup_idx_dec, device=self.device)
             return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
         else:
             final_out = torch.zeros_like(y)
             dec_out_len = self.dec_seq_len - self.dec_seq_offset
             for i in range(dec_out_len):
-                dec_out = self.decoder(y, graph_y, enc_outs, tgt_mask=tgt_mask, local_trends=True,
+                dec_out = self.decoder(y, graph_y, enc_outs, tgt_mask=tgt_mask, local_trends=False,
                                        lookup_idx=self.lookup_idx_dec, device=self.device)
 
                 if i < dec_out_len:
