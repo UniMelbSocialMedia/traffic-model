@@ -111,7 +111,9 @@ class TransformerDecoder(nn.Module):
             if local_trends:
                 # x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
                 x = self.calculate_masked_src(x, self.conv_q_layers[idx], tgt_mask_conv, device)
-
+            elif not local_trends and idx == 0:
+                x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
+                
             enc_xs = []
             for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
                 if self.enc_features > 1:
