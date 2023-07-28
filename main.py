@@ -7,6 +7,7 @@ from data_loader.data_loader import DataLoader
 from models.sgat_transformer.sgat_transformer import SGATTransformer
 from test import test
 from train import train
+from utils.logger import logger
 from utils.masked_mae_loss import Masked_MAE_Loss
 
 
@@ -68,9 +69,11 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                                                           seq_offset=model_configs['dec_seq_offset'])
         lr_scheduler.step()
 
-        print(f"Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss}"
-              f" | mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss}"
-              f" | rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}")
+        out_txt = f"Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss} " \
+                  f"| mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss} " \
+                  f"| rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}"
+        logger.info(out_txt)
+        print(out_txt)
 
         if min_val_loss > mae_val_loss:
             min_val_loss = mae_val_loss
@@ -80,6 +83,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
 
     # testing model
     print('Testing model...')
+    logger.info('Testing model...')
     model.load_state_dict(torch.load(best_model_path))
     mae_test_loss, rmse_test_loss, mape_test_loss = test(_type='test',
                                                          model=model,
@@ -88,6 +92,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                                                          seq_offset=model_configs['dec_seq_offset'])
 
     print(f"mae_test_loss: {mae_test_loss} | rmse_test_loss: {rmse_test_loss} | mape_test_loss: {mape_test_loss}")
+    logger.info(f"mae_test_loss: {mae_test_loss} | rmse_test_loss: {rmse_test_loss} | mape_test_loss: {mape_test_loss}")
 
 
 if __name__ == '__main__':
