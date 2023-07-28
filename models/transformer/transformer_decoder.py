@@ -45,7 +45,7 @@ class TransformerDecoder(nn.Module):
         self.cross_attn_features = cross_attn_features
         self.conv_k_layers = nn.ModuleList([
             nn.ModuleList(
-                [nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1) for i in
+                [nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=2) for i in
                  range(cross_attn_features)])
             for j in range(num_layers)
         ])

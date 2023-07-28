@@ -6,8 +6,8 @@ load_saved_model: False
 edge_dim: 1
 input_dim: 1
 enc_seq_len: 36
-dec_seq_len: 16
-dec_seq_offset: 4 # Indicates how many timesteps in the previous hour consider as inputs in the decoder
+dec_seq_len: 13
+dec_seq_offset: 1 # Indicates how many timesteps in the previous hour consider as inputs in the decoder
 
 adj_filename: "data/PEMS08/PEMS08.csv"
 graph_signal_matrix_filename: "data/PEMS08/PEMS08.npz"
@@ -32,5 +32,5 @@ merge_emb: False # Indicate whether the graph embeddings merge with non-graph em
 device: cuda
 cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
 per_enc_feature_len: 36  # used in decoder cross attention (feature-wise cross attention). This should be tuned along with cross_attn_features
-dec_out_start_idx: 2 # When set decoder offset, this indicates the start index of the decoder output to calculate loss
-dec_out_end_idx: -2 # When set decoder offset, this indicates the end index of the decoder output to calculate loss
+dec_out_start_idx: 0 # When set decoder offset, this indicates the start index of the decoder output to calculate loss
+dec_out_end_idx: -1 # When set decoder offset, this indicates the end index of the decoder output to calculate loss
