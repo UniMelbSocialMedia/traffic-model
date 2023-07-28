@@ -54,6 +54,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
 
     for epoch in range(epochs):
         print(f"LR: {lr_scheduler.get_last_lr()}")
+        logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
