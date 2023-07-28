@@ -32,7 +32,7 @@ class TransformerDecoder(nn.Module):
         self.conv_q_layer = nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
 
         self.conv_q_layers = nn.ModuleList([
-                nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(1, 3), stride=1, padding=(0, 2), bias=False)
+                nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(1, 3), stride=1, padding=(0, 1), bias=False)
                 for _ in range(num_layers)
             ])
         # decoder input masking for convolution operation
@@ -111,8 +111,6 @@ class TransformerDecoder(nn.Module):
             if local_trends:
                 # x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
                 x = self.calculate_masked_src(x, self.conv_q_layers[idx], tgt_mask_conv, device)
-            elif not local_trends and idx == 0:
-                x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
 
             enc_xs = []
             for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
