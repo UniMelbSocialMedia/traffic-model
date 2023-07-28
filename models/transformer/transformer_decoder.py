@@ -58,6 +58,8 @@ class TransformerDecoder(nn.Module):
             ]
         )
 
+        self.conv_dropout = nn.Dropout(0.5)
+
         self.fc_out = nn.Linear(embed_dim, out_dim)
 
     def calculate_masked_src(self, x, conv_q, tgt_mask, device='cuda'):
@@ -115,7 +117,10 @@ class TransformerDecoder(nn.Module):
             enc_xs = []
             for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
                 if self.enc_features > 1:
-                    enc_xs.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
+                    if idx_k == 0:
+                        enc_xs.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
+                    else:
+                        enc_xs.append(self.conv_dropout(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1)))
                 else:
                     start = idx_k * self.per_enc_feature_len
                     enc_xs.append(f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
