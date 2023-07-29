@@ -294,10 +294,10 @@ class DataLoader:
         (stats_y, y_train, y_val, y_test) = min_max_normalize(training_y_set, validation_y_set, testing_y_set)
 
         # shuffling training data 0th axis
-        idx_samples = np.arange(0, x_train.shape[0])
-        np.random.shuffle(idx_samples)
-        x_train = x_train[idx_samples]
-        y_train = y_train[idx_samples]
+        # idx_samples = np.arange(0, x_train.shape[0])
+        # np.random.shuffle(idx_samples)
+        # x_train = x_train[idx_samples]
+        # y_train = y_train[idx_samples]
 
         self.n_batch_train = int(len(x_train) / self.batch_size)
         self.n_batch_test = int(len(x_test) / self.batch_size)
