@@ -250,7 +250,7 @@ class DataLoader:
             hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
             yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
             week_diff = x[:, :, 2:3] - records_time_idx[record_key]
-            x = np.concatenate((hr_diff, yesterday_diff, week_diff, records_time_idx[record_key],
+            x = np.concatenate((x[:, :, 0:1], x[:, :, 1:2], x[:, :, 2:3], records_time_idx[record_key],
                                 records_time_idx[record_key_yesterday], records_time_idx[record_key]), axis=-1)
             new_train_x_set[i] = x
 
@@ -264,7 +264,7 @@ class DataLoader:
             hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
             yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
             week_diff = x[:, :, 2:3] - records_time_idx[record_key]
-            x = np.concatenate((hr_diff, yesterday_diff, week_diff, records_time_idx[record_key],
+            x = np.concatenate((x[:, :, 0:1], x[:, :, 1:2], x[:, :, 2:3], records_time_idx[record_key],
                                 records_time_idx[record_key_yesterday], records_time_idx[record_key]), axis=-1)
             new_val_x_set[i] = x
 
@@ -277,7 +277,7 @@ class DataLoader:
             hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
             yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
             week_diff = x[:, :, 2:3] - records_time_idx[record_key]
-            x = np.concatenate((hr_diff, yesterday_diff, week_diff, records_time_idx[record_key],
+            x = np.concatenate((x[:, :, 0:1], x[:, :, 1:2], x[:, :, 2:3], records_time_idx[record_key],
                                 records_time_idx[record_key_yesterday], records_time_idx[record_key]), axis=-1)
             new_test_x_set[i] = x
 
