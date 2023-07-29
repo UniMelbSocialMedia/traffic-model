@@ -24,3 +24,9 @@ MAE 2.3154850006103516
 MAE 4.1202560108486965
 Epoch: 2 | mae_train_loss: 1.4602418525922345 | rmse_train_loss: 2.4052995831573605 | mape_train_loss: 0.03371753520421484 | mae_val_loss: 5.69778640932507 | rmse_val_loss: 6.790783360269335 | mape_val_loss: 5484121.414192781
 LR: [0.0009092830723281001]
+LR: [0.001]
+all_batch: 2372 | batch: 49 | mae_tmp_loss: 77.90884284973144 | rmse_tmp_loss: 96.63029190063476 | mape_tmp_loss: 1.2596040594577789
+all_batch: 2372 | batch: 99 | mae_tmp_loss: 57.78596908569336 | rmse_tmp_loss: 73.15659507751465 | mape_tmp_loss: 0.8612192258238792
+all_batch: 2372 | batch: 149 | mae_tmp_loss: 48.877231483459475 | rmse_tmp_loss: 62.685274607340496 | mape_tmp_loss: 0.698815654416879
+LR: [0.001]
+all_batch: 2372 | batch: 49 | mae_tmp_loss: 71.34820930480957 | rmse_tmp_loss: 89.51613121032715 | mape_tmp_loss: 1.0090126532316208

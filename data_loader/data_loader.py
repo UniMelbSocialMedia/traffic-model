@@ -193,33 +193,40 @@ class DataLoader:
                                                                            points_per_week)
 
         new_train_x_set = np.zeros(
-            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3]+1))
+            (training_x_set.shape[0], training_x_set.shape[1], training_x_set.shape[2], training_x_set.shape[3]+2))
         for i, x in enumerate(training_x_set):
             record_key = x[0, 0, -1]
             record_key_yesterday = record_key - 24 * 12
             record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
-            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]), axis=-1)
+            hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
+            yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
+            week_diff = x[:, :, 2:3] - records_time_idx[record_key]
+            x = np.concatenate((x[:, :, :-1], hr_diff, yesterday_diff, week_diff), axis=-1)
             new_train_x_set[i] = x
 
         new_val_x_set = np.zeros(
             (
-            validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2], validation_x_set.shape[3]+1))
+            validation_x_set.shape[0], validation_x_set.shape[1], validation_x_set.shape[2], validation_x_set.shape[3]+2))
         for i, x in enumerate(validation_x_set):
             record_key = x[0, 0, -1]
             record_key_yesterday = record_key - 24 * 12
             record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
-            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]),
-                               axis=-1)
+            hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
+            yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
+            week_diff = x[:, :, 2:3] - records_time_idx[record_key]
+            x = np.concatenate((x[:, :, :-1], hr_diff, yesterday_diff, week_diff), axis=-1)
             new_val_x_set[i] = x
 
         new_test_x_set = np.zeros(
-            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3]+1))
+            (testing_x_set.shape[0], testing_x_set.shape[1], testing_x_set.shape[2], testing_x_set.shape[3]+2))
         for i, x in enumerate(testing_x_set):
             record_key = x[0, 0, -1]
             record_key_yesterday = record_key - 24 * 12
             record_key_yesterday = record_key_yesterday if record_key_yesterday >= 0 else record_key + points_per_week - 24 * 12
-            x = np.concatenate((x[:, :, :-1], records_time_idx[record_key], records_time_idx[record_key_yesterday]),
-                               axis=-1)
+            hr_diff = x[:, :, 0:1] - records_time_idx[record_key]
+            yesterday_diff = x[:, :, 1:2] - records_time_idx[record_key_yesterday]
+            week_diff = x[:, :, 2:3] - records_time_idx[record_key]
+            x = np.concatenate((x[:, :, :-1], hr_diff, yesterday_diff, week_diff), axis=-1)
             new_test_x_set[i] = x
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
@@ -311,7 +318,7 @@ class DataLoader:
             batched_xs_graphs[idx] = [graphs1, graphs2, graphs3, graphs4]
 
             speed_vals = np.concatenate(np.array([xs[idx][:, :, 2:3], xs[idx][:, :, 1:2], xs[idx][:, :, 0:1]]), axis=0)
-            rep_vals = np.concatenate(np.array([xs[idx][:, :, 3:4], xs[idx][:, :, 4:5], xs[idx][:, :, 3:4]]), axis=0)
+            rep_vals = np.concatenate(np.array([xs[idx][:, :, 6:7], xs[idx][:, :, 5:6], xs[idx][:, :, 4:5]]), axis=0)
             if self.enc_features > 1:
                 batched_xs[idx] = torch.Tensor(np.concatenate((speed_vals, rep_vals), axis=-1)).to(device)
             else:
