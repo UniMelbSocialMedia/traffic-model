@@ -12,7 +12,7 @@ from utils.masked_mae_loss import Masked_MAE_Loss
 
 
 def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str, model_output_path: str,
-        load_saved_model: bool, model_configs: dict, log_file):
+        load_saved_model: bool, model_configs: dict):
     model = SGATTransformer(device=device,
                             sgat_first_in_f_size=1,
                             sgat_n_layers=1,
@@ -117,7 +117,6 @@ if __name__ == '__main__':
             'graph_signal_matrix_filename'] \
             else 'data/PEMS04/PEMS04.npz'
         dataset_name = configs['dataset_name'] if configs['dataset_name'] else 'PEMS04'
-        log_filename = configs['log_filename']
 
         graph_enc_input = configs['graph_enc_input'] if configs['graph_enc_input'] else False
         graph_dec_input = configs['graph_dec_input'] if configs['graph_dec_input'] else False
@@ -143,8 +142,6 @@ if __name__ == '__main__':
         per_enc_feature_len = configs['per_enc_feature_len'] if configs['per_enc_feature_len'] else 12
         dec_out_start_idx = configs['dec_out_start_idx']
         dec_out_end_idx = configs['dec_out_end_idx']
-
-    log_file = open(log_filename, '+w')
 
     data_configs = {
         'num_of_vertices': num_of_vertices,
@@ -176,7 +173,6 @@ if __name__ == '__main__':
         model_input_path=model_input_path,
         model_output_path=model_output_path,
         load_saved_model=load_saved_model,
-        log_file=log_file,
         model_configs={
             'input_dim': input_dim,
             'edge_dim': edge_dim,
