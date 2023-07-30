@@ -26,8 +26,8 @@ class TransformerDecoder(nn.Module):
                                              seq_len=seq_len)
         # by merging embeddings we increase the num embeddings
         self.merge_embed = merge_embed
-        if merge_embed:
-            embed_dim = embed_dim * 2
+        # if merge_embed:
+        #     embed_dim = embed_dim * 2
 
         self.position_embedding = PositionalEmbedding(max_lookup_len, embed_dim)
 
@@ -96,9 +96,9 @@ class TransformerDecoder(nn.Module):
 
         embed_out = None
         if embed_graph_x is not None and embed_x is not None and self.merge_embed:
-            embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
-            # embed_out = embed_x + embed_graph_x
-            # embed_out = self.temp_norm(embed_out)
+            # embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
+            embed_out = embed_x + embed_graph_x
+            embed_out = self.temp_norm(embed_out)
         elif embed_graph_x is None and embed_x is not None:
             embed_out = embed_x
         elif embed_graph_x is not None and embed_x is None:

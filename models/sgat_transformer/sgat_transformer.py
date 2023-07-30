@@ -105,7 +105,7 @@ class SGATTransformer(nn.Module):
 
     def forward(self, x, graph_x, y=None, graph_y=None, train=True):
         # TODO: We can't guarentee that always x presents. So have to replace the way of finding shape
-        emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * 2
+        emb_dim = self.emb_dim
         enc_outs = torch.zeros((self.enc_features, len(graph_x[0]) * 228, self.enc_seq_len, emb_dim)).to(self.device)
 
         for idx, encoder in enumerate(self.encoders):
