@@ -53,7 +53,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
     min_val_loss = np.inf
 
     for epoch in range(epochs):
-        log_file.write(f"LR: {lr_scheduler.get_last_lr()}\n")
+        logger.info(f"LR: {lr_scheduler.get_last_lr()}\n")
 
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
