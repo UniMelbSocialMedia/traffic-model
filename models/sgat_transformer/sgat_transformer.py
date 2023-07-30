@@ -131,7 +131,7 @@ class SGATTransformer(nn.Module):
 
                 if y:
                     y[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
-                for batch in range(len(graph_y[0])):
+                for batch in range(len(graph_y)):
                     graph_y[batch][i + self.dec_seq_offset].x = dec_out[batch, i + self.dec_out_start_idx]
 
                 final_out[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
