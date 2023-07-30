@@ -24,16 +24,17 @@ class TransformerDecoder(nn.Module):
                                              dropout=sgat_settings['dropout'],
                                              edge_dim=sgat_settings['edge_dim'],
                                              seq_len=seq_len)
-        self.position_embedding = PositionalEmbedding(max_lookup_len, embed_dim)
         # by merging embeddings we increase the num embeddings
         self.merge_embed = merge_embed
-        # if merge_embed:
-        #     embed_dim = embed_dim * 2
+        if merge_embed:
+            embed_dim = embed_dim * 2
+
+        self.position_embedding = PositionalEmbedding(max_lookup_len, embed_dim)
 
         self.conv_q_layer = nn.Conv1d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=3, stride=1, padding=1)
 
         self.conv_q_layers = nn.ModuleList([
-                nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(1, 3), stride=1, padding=(0, 1), bias=False)
+                nn.Conv2d(in_channels=embed_dim, out_channels=embed_dim, kernel_size=(1, 3), stride=1, padding=(0, 2), bias=False)
                 for _ in range(num_layers)
             ])
         # decoder input masking for convolution operation
@@ -95,9 +96,9 @@ class TransformerDecoder(nn.Module):
 
         embed_out = None
         if embed_graph_x is not None and embed_x is not None and self.merge_embed:
-            # embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
-            embed_out = embed_x + embed_graph_x
-            embed_out = self.temp_norm(embed_out)
+            embed_out = torch.concat((embed_x, embed_graph_x), dim=-1)
+            # embed_out = embed_x + embed_graph_x
+            # embed_out = self.temp_norm(embed_out)
         elif embed_graph_x is None and embed_x is not None:
             embed_out = embed_x
         elif embed_graph_x is not None and embed_x is None:
