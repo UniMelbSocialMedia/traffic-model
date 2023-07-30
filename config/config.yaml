@@ -1,6 +1,6 @@
 batch_size: 16
 epochs: 50
-model_output_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_{}_model.pt"
+model_output_path: "output/model/pemsd7/multi-cross-attn/epoch_v2_{}_model.pt"
 model_input_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_13_model.pt"
 log_filename: "output/model/pemsd7/multi-cross-attn/log.txt"
 load_saved_model: False
@@ -25,10 +25,10 @@ num_of_days_target: 1
 num_of_weeks_target: 1
 graph_enc_input: True # IMPORTANT: Set true for all encode inputs if merge_emb is True
 graph_dec_input: True
-non_graph_enc_input: True
-non_graph_dec_input: True
+non_graph_enc_input: False
+non_graph_dec_input: False
 enc_features: 1 # To indicates multiple encoders (feature-wise). default is 1
-merge_emb: True # Indicate whether the graph embeddings merge with non-graph embedding.
+merge_emb: False # Indicate whether the graph embeddings merge with non-graph embedding.
 device: cpu
 cross_attn_features: 3 # Used to indicates how many feature-wise cross attentions in the decoder
 per_enc_feature_len: 12  # used in decoder cross attention (feature-wise cross attention). This should be tuned along with cross_attn_features

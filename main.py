@@ -69,7 +69,7 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                                                           seq_offset=model_configs['dec_seq_offset'])
         lr_scheduler.step()
 
-        if lr_scheduler.get_last_lr() < 0.0001:
+        if lr_scheduler.get_last_lr()[0] < 0.0001:
             optimizer.param_groups[0]['lr'] = 0.001 * 0.75
 
         logger.info("Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss}"

@@ -45,6 +45,7 @@ class SGATTransformer(nn.Module):
         self.dec_seq_offset = transformer_dec_seq_offset
         self.dec_out_start_idx = transformer_dec_out_start_idx
         self.dec_out_end_idx = transformer_dec_out_end_idx
+        self.enc_seq_len = transformer_enc_seq_len
 
         sgat_settings = {
             'n_layers': sgat_n_layers,
@@ -105,7 +106,7 @@ class SGATTransformer(nn.Module):
     def forward(self, x, graph_x, y=None, graph_y=None, train=True):
         # TODO: We can't guarentee that always x presents. So have to replace the way of finding shape
         emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * 2
-        enc_outs = torch.zeros((self.enc_features, x.shape[0] * x.shape[2], x.shape[1], emb_dim)).to(self.device)
+        enc_outs = torch.zeros((self.enc_features, len(graph_x[0]) * 228, self.enc_seq_len, emb_dim)).to(self.device)
 
         for idx, encoder in enumerate(self.encoders):
             x_i = x[:, :, :, idx: idx + 1] if x is not None else None
