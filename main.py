@@ -92,8 +92,6 @@ def run(epochs: int, data_loader: DataLoader, device: str, model_input_path: str
                                                          seq_offset=model_configs['dec_seq_offset'])
 
 
-    log_file.close()
-
 
 if __name__ == '__main__':
     # load configs
