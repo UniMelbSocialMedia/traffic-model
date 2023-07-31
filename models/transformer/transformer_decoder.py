@@ -114,7 +114,7 @@ class TransformerDecoder(nn.Module):
         tgt_mask_conv = self.create_conv_mask(x, device)
 
         for idx, layer in enumerate(self.layers):
-            if local_trends:
+            if local_trends and idx == 0:
                 # x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
                 x = self.calculate_masked_src(x, self.conv_q_layers[idx], tgt_mask_conv, device)
 
