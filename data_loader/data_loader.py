@@ -282,7 +282,7 @@ class DataLoader:
         batched_ys = torch.stack(batched_ys)
 
         if not self.graph_enc_input:
-            batched_xs_graphs = None
+            feature_xs_graphs = None
         if not self.non_graph_enc_input:
             batched_xs = None
         if not self.graph_dec_input:
