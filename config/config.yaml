@@ -17,7 +17,7 @@ model:
       n_layers: 4
       local_trends: True
       graph_semantic_input: True
-      graph_input: True
+      graph_input: False
       encoder_block:
         n_heads: 8
         expansion_factor: 4
@@ -69,7 +69,7 @@ model:
 data:
   edge_weight_filename: "data/PEMSD7/PeMSD7_W_228.csv"
   edge_weight_original_filename: "data/PEMSD7/PeMSD7_W_228_original.csv"
-  semantic_adj_filename: "data/PEMSD7/PeMSD7_W_228.pickle"
+  semantic_adj_filename: "data/PEMSD7/PeMSD7_time_idx_semantic_edges.pickle"
   edge_weight_scaling: True
   node_data_filename: "data/PEMSD7/PeMSD7_V_228.csv"
   num_of_vertices: 228
@@ -79,5 +79,5 @@ data:
   last_day: True
   num_days_per_week: 5
   rep_vectors: True
-  preprocess: False
+  preprocess: True
   preprocess_output_path: "data/PEMSD7/PeMSD7_Preprocessed.pickle"

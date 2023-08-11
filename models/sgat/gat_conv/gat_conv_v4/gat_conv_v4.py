@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch.nn import Parameter
 
+from models.sgat.gat_conv.gat_conv_v4.message_passing_v4 import MessagePassingV4
 from torch_geometric.nn.dense.linear import Linear
 from torch_geometric.nn.inits import glorot, zeros
 from torch_geometric.typing import NoneType  # noqa
@@ -23,8 +24,6 @@ from torch_geometric.utils import (
     softmax,
 )
 from torch_geometric.utils.sparse import set_sparse_value
-
-from models.sgat.gat_conv.gat_conv_v4.message_passing_v4 import MessagePassingV4
 
 
 class GATConvV4(MessagePassingV4):
@@ -161,7 +160,8 @@ class GATConvV4(MessagePassingV4):
         if edge_dim is not None:
             self.lin_edge = Linear(edge_dim, heads * out_channels, bias=False,
                                    weight_initializer='glorot')
-            self.att_edge = Parameter(torch.Tensor(1, heads, out_channels))
+            # self.att_edge = Parameter(torch.Tensor(1, heads, out_channels))
+            self.att_edge = None
         else:
             self.lin_edge = None
             self.register_parameter('att_edge', None)
@@ -189,7 +189,8 @@ class GATConvV4(MessagePassingV4):
 
     def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
                 edge_attr: OptTensor = None, size: Size = None,
-                return_attention_weights=None, skip_attn=False):
+                return_attention_weights=None, skip_attn=False,
+                attn_edge: Tensor = None):
         # type: (Union[Tensor, OptPairTensor], Tensor, OptTensor, Size, NoneType) -> Tensor  # noqa
         # type: (Union[Tensor, OptPairTensor], SparseTensor, OptTensor, Size, NoneType) -> Tensor  # noqa
         # type: (Union[Tensor, OptPairTensor], Tensor, OptTensor, Size, bool) -> Tuple[Tensor, Tuple[Tensor, Tensor]]  # noqa
@@ -211,6 +212,8 @@ class GATConvV4(MessagePassingV4):
         # actual value.
 
         H, C = self.heads, self.out_channels
+
+        self.att_edge = attn_edge
 
         # We first transform the input node features. If a tuple is passed, we
         # transform source and target node features via separate weights:
@@ -307,11 +310,13 @@ class GATConvV4(MessagePassingV4):
         if index.numel() == 0:
             return alpha
         if edge_attr is not None and self.lin_edge is not None:
-            if edge_attr.dim() == 1:
-                edge_attr = edge_attr.view(-1, 1)
-            edge_attr = self.lin_edge(edge_attr)
-            edge_attr = edge_attr.view(-1, self.heads, self.out_channels)
-            alpha_edge = (edge_attr * self.att_edge).sum(dim=-1)
+            #edge attribute calcuated early layer
+            # if edge_attr.dim() == 1:
+            #     edge_attr = edge_attr.view(-1, 1)
+            # edge_attr = self.lin_edge(edge_attr)
+            # edge_attr = edge_attr.view(-1, self.heads, self.out_channels)
+            # alpha_edge = (edge_attr * self.att_edge).sum(dim=-1)
+            alpha_edge = (edge_attr * self.att_edge)
             alpha = alpha + alpha_edge
 
         alpha = F.leaky_relu(alpha, self.negative_slope)

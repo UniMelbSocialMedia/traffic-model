@@ -85,7 +85,9 @@ class DataLoader:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
 
             new_x_set[i] = tmp
-        return new_x_set
+
+        time_idx = x_set[:, :, :, 1:2]
+        return new_x_set, time_idx
 
     # generate training, validation and test data
     def load_node_data_file(self):
@@ -153,9 +155,9 @@ class DataLoader:
         validation_y_set = seq_val[:-1 * self.n_seq, self.len_input:]
         testing_y_set = seq_test[:-1 * self.n_seq, self.len_input:]
 
-        new_train_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set = self._generate_new_x_arr(testing_x_set, records_time_idx)
+        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
+        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
+        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -168,6 +170,11 @@ class DataLoader:
         # z-score normalization on input and target values
         stats_x, x_train, x_val, x_test = z_score_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
         stats_y, y_train, y_val, y_test = z_score_normalize(training_y_set, validation_y_set, testing_y_set)
+
+        # concat time idx
+        x_train = np.concatenate((x_train, train_time_idx), axis=-1)
+        x_val = np.concatenate((x_val, val_time_idx), axis=-1)
+        x_test = np.concatenate((x_test, test_time_idx), axis=-1)
 
         # shuffling training data 0th axis
         idx_samples = np.arange(0, x_train.shape[0])
@@ -217,23 +224,9 @@ class DataLoader:
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')
-        sensor_details = pickle.load(semantic_file)
+        semantic_edge_details = pickle.load(semantic_file)
 
-        dst_edges = []
-        src_edges = []
-        edge_attr = []
-        for i, (sensor, neighbours) in enumerate(sensor_details.items()):
-            for j, (neighbour, distance) in enumerate(neighbours.items()):
-                if j > 2:
-                    break
-                dst_edges.append(sensor)
-                src_edges.append(neighbour)
-                edge_attr.append([distance])
-
-        edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling, min_max=True)
-
-        return edge_index, edge_attr
+        return semantic_edge_details
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
 
@@ -241,7 +234,8 @@ class DataLoader:
         ys = self.dataset.get_y(_type)
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        xs = xs[offset: limit, :]  # [9358, 13, 228, 1]
+        enc_xs_time_idx = xs[offset: limit, :, :, -1:]
+        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1] # Avoid selecting time idx
         ys = ys[offset: limit, :]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
@@ -333,4 +327,4 @@ class DataLoader:
 
         dec_ys = torch.stack(dec_ys)
 
-        return enc_xs, dec_ys, dec_ys_target
+        return enc_xs, enc_xs_time_idx, dec_ys, dec_ys_target
