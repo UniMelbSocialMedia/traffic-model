@@ -49,49 +49,24 @@ def seq_gen(len_seq, data_seq, offset, n_frame, n_route, day_slot, C_0=1):
     return tmp_seq, wk_dy_arr, hr_arr
 
 
-def seq_gen_v2(len_seq, data_seq, offset, n_frame, n_route, day_slot, C_0=1, total_days=44):
-    '''
-    Generate data in the form of standard sequence unit. This method is taken from STGCN paper.
-    :param len_seq: int, the length of target date sequence.
-    :param data_seq: np.ndarray, source data / time-series.
-    :param offset:  int, the starting index of different dataset type.
-    :param n_frame: int, the number of frame within a standard sequence unit,
-                         which contains n_his = 12 and n_pred = 9 (3 /15 min, 6 /30 min & 9 /45 min).
-    :param n_route: int, the number of routes in the graph.
-    :param day_slot: int, the number of time slots per day, controlled by the time window (5 min as default).
-    :param C_0: int, the size of input channel.
-    :return: np.ndarray, [len_seq, n_frame, n_route, C_0].
-    '''
-
-    # Changed to take all the data. Previously it ignored data of last two hours in everyday causes loss of data volume.
-    # However, have to make sure avoid data leakage from validation dataset.
-    n_slot = day_slot
-    total_slots = total_days * day_slot
-
-    tmp_seq = np.zeros((len_seq * n_slot, n_frame, n_route, C_0))
-    for i in range(len_seq):
-        for j in range(n_slot):
-            sta = (i + offset) * day_slot + j
-            end = sta + n_frame
-            if end > total_slots: continue
-            tmp_seq[i * n_slot + j, :, :, :] = np.reshape(data_seq[sta:end, :], [n_frame, n_route, C_0])
+def seq_gen_v2(len_seq, data_seq, n_frame, n_route, C_0=1):
+    seq_dataset_size = len_seq - n_frame
+    tmp_seq = np.zeros((seq_dataset_size, n_frame, n_route, C_0))
+    for i in range(seq_dataset_size):
+        start = i
+        end = start + n_frame
+        tmp_seq[i, :, :, :] = np.reshape(data_seq[start:end, :], [n_frame, n_route, C_0])
     return tmp_seq
 
 
-def attach_prev_dys_seq(seq_all: np.array, n_his: int, day_slots: int, num_days_per_week: int, n_train: int, n_val: int,
-                        last_week: bool, last_day: bool, total_drop: int):
-    train_end_limit = day_slots * n_train - total_drop
-    val_end_limit = day_slots * (n_train + n_val) - total_drop
+def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_week: int, last_week: bool,
+                        last_day: bool, total_drop: int):
+    seq_tmp = seq[total_drop:]
 
-    seq_tmp = seq_all[total_drop:]
-
-    seq_input_train = []
-    seq_input_val = []
-    seq_input_test = []
-
+    seq_output = []
     for k in range(len(seq_tmp)):
-        lst_dy_data = seq_all[total_drop + k - day_slots][n_his:, :, 0:1]
-        lst_wk_data = seq_all[total_drop + k - (day_slots * num_days_per_week)][n_his:, :, 0:1]
+        lst_dy_data = seq[total_drop + k - day_slots][:n_his, :, 0:1]
+        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][:n_his, :, 0:1]
 
         tmp = seq_tmp[k][:n_his]
         if last_day:
@@ -99,15 +74,9 @@ def attach_prev_dys_seq(seq_all: np.array, n_his: int, day_slots: int, num_days_
         if last_week:
             tmp = np.concatenate((tmp, lst_wk_data), axis=-1)
 
-        if k < train_end_limit:
-            seq_input_train.append(tmp)
-        elif train_end_limit <= k < val_end_limit:
-            seq_input_val.append(tmp)
-        else:
-            seq_input_test.append(tmp)
+        seq_output.append(tmp)
 
-    x = {'train': np.array(seq_input_train), 'val': np.array(seq_input_val), 'test': np.array(seq_input_test)}
-    return x
+    return np.array(seq_output)
 
 
 def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: int):

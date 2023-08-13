@@ -77,7 +77,7 @@ def prepare_data(model_configs: dict, data_configs: dict):
     data_loader = DataLoader(data_configs)
     data_loader.load_node_data_file()
     data_loader.load_edge_data_file()
-    data_loader.load_semantic_edge_data_file()
+    # data_loader.load_semantic_edge_data_file()
 
     max_lkup_len_enc, lkup_idx_enc, max_lkup_len_dec, lkup_idx_dec = create_lookup_index(data_configs['last_week'],
                                                                                          data_configs['last_day'],
