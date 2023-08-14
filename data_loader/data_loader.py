@@ -206,7 +206,7 @@ class DataLoader:
         edge_attr = []
         for row in range(adj_mx.shape[0]):
             for col in range(adj_mx.shape[1]):
-                if adj_mx[row][col] != 0 and row != col:
+                if adj_mx[row][col] != 0:
                     dst_edges.append(col)
                     src_edges.append(row)
                     edge_attr.append([adj_mx[row][col]])
