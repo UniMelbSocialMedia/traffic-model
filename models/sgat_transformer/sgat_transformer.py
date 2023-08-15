@@ -53,9 +53,9 @@ class SGATTransformer(nn.Module):
         tgt_mask = self._create_mask(enc_outs.shape[1], self.device)
 
         for idx, encoder in enumerate(self.encoders):
-            x_i = x[idx] if x is not None and idx == 1 else None
-            graph_x_i = graph_x[0][idx] if graph_x[0] is not None and idx == 0 else None
-            graph_x_i_semantic = graph_x[1][idx] if graph_x[1] is not None and idx == 0 else None
+            x_i = x[idx] if x is not None else None
+            graph_x_i = graph_x[0][idx] if graph_x[0] is not None else None
+            graph_x_i_semantic = graph_x[1][idx] if graph_x[1] is not None else None
 
             enc_out = encoder(x_i, graph_x_i, graph_x_i_semantic)
             enc_outs[idx] = enc_out
