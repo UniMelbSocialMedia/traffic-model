@@ -33,6 +33,6 @@ class SGATEmbedding(nn.Module):
         hidden_f = ()
         for t in range(seq_size):
             batch_data = list(zip(*x))[t]
-            hidden_f = (*hidden_f, self.gats(batch_data))
+            hidden_f = (*hidden_f, self.gat(batch_data))
 
         return torch.stack(hidden_f)
