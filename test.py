@@ -41,8 +41,8 @@ def test(_type: str,
 
             mae_loss_val, rmse_loss_val, mape_loss_val = calculate_loss(y_pred=out,
                                                                         y=test_y_target,
-                                                                        _mean=data_loader.dataset.get_mean(),
-                                                                        _std=data_loader.dataset.get_std())
+                                                                        _mean=data_loader.dataset.stats_test['mean'],
+                                                                        _std=data_loader.dataset.stats_test['std'])
             mae_loss += mae_loss_val
             rmse_loss += rmse_loss_val
             mape_loss += mape_loss_val
