@@ -65,8 +65,8 @@ def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_
 
     seq_output = []
     for k in range(len(seq_tmp)):
-        lst_dy_data = seq[total_drop + k - day_slots][:n_his, :, 0:1]
-        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][:n_his, :, 0:1]
+        lst_dy_data = seq[total_drop + k - day_slots][n_his:, :, 0:1]
+        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][n_his:, :, 0:1]
 
         tmp = seq_tmp[k][:n_his]
         if last_day:
@@ -190,7 +190,7 @@ def search_index(max_len, num_of_depend=1, num_for_predict=12, points_per_hour=1
 
 def create_lookup_index(last_week=True, last_dy=True, dec_seq_offset=0, dec_seq_len=12):
     wk_lookup_idx = search_index(max_len=0,
-                                 units=24 * 5,
+                                 units=24 * 7,
                                  offset=0)
     dy_lookup_idx = search_index(max_len=0,
                                  units=24,
