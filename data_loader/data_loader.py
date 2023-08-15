@@ -135,10 +135,10 @@ class DataLoader:
         y_val = z_score(y_val, val_data['mean'], val_data['std'])
 
         # shuffling training data 0th axis
-        idx_samples = np.arange(0, x_train.shape[0])
-        np.random.shuffle(idx_samples)
-        x_train = x_train[idx_samples]
-        y_train = y_train[idx_samples]
+        # idx_samples = np.arange(0, x_train.shape[0])
+        # np.random.shuffle(idx_samples)
+        # x_train = x_train[idx_samples]
+        # y_train = y_train[idx_samples]
 
         self.n_batch_train = int(len(x_train) / self.batch_size)
         self.n_batch_test = int(len(x_test) / self.batch_size)

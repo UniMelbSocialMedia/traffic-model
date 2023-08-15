@@ -78,8 +78,8 @@ data:
   preprocess: True
   preprocess_output_path: "data/METRLA/METRLA_Preprocessed.pickle"
   graph_enc_semantic_input: False # IMPORTANT: Set true for all encode inputs if merge_emb is True
-  graph_enc_input: True # IMPORTANT: Set true for all encode inputs if merge_emb is True
+  graph_enc_input: False # IMPORTANT: Set true for all encode inputs if merge_emb is True
   graph_dec_semantic_input: False
-  graph_dec_input: True
+  graph_dec_input: False
   non_graph_enc_input: True
   non_graph_dec_input: True
