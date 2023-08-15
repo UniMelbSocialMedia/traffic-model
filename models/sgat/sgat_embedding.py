@@ -10,9 +10,10 @@ class SGATEmbedding(nn.Module):
         super(SGATEmbedding, self).__init__()
 
         if sgat_configs['skip_conn']:
-            self.gats = nn.ModuleList([
-                GATV2(sgat_configs) for _ in range(sgat_configs['seq_len'])
-            ])
+            # self.gats = nn.ModuleList([
+            #     GATV2(sgat_configs) for _ in range(sgat_configs['seq_len'])
+            # ])
+            self.gat = GATV2(sgat_configs)
         else:
             self.gats = nn.ModuleList([
                 GAT(sgat_configs) for _ in range(sgat_configs['seq_len'])
@@ -32,6 +33,6 @@ class SGATEmbedding(nn.Module):
         hidden_f = ()
         for t in range(seq_size):
             batch_data = list(zip(*x))[t]
-            hidden_f = (*hidden_f, self.gats[t](batch_data))
+            hidden_f = (*hidden_f, self.gats(batch_data))
 
         return torch.stack(hidden_f)
