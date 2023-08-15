@@ -1,7 +1,7 @@
 # Model Configs
 model:
   batch_size: 4
-  epochs: 75
+  epochs: 100
   model_output_path: "output/model/metrla/rep-vector-sgat-refactor/epoch_v1_{}_model.pt"
   model_input_path: "output/model/metrla/rep-vector-sgat-refactor/epoch_v1_13_model.pt"
   load_saved_model: False
@@ -29,7 +29,7 @@ model:
         alpha: 0.2
         dropout: 0.7
         edge_dim: 1
-        skip_conn: False
+        skip_conn: True
     decoder:
       emb_dim: 16
       seq_len: 13
@@ -78,8 +78,8 @@ data:
   preprocess: True
   preprocess_output_path: "data/METRLA/METRLA_Preprocessed.pickle"
   graph_enc_semantic_input: False # IMPORTANT: Set true for all encode inputs if merge_emb is True
-  graph_enc_input: False # IMPORTANT: Set true for all encode inputs if merge_emb is True
+  graph_enc_input: True # IMPORTANT: Set true for all encode inputs if merge_emb is True
   graph_dec_semantic_input: False
-  graph_dec_input: False
+  graph_dec_input: True
   non_graph_enc_input: True
   non_graph_dec_input: True
