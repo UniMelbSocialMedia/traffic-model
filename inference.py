@@ -49,7 +49,7 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load(model_configs['model_input_path']))
 
     device = model_configs['device']
-    graph_out_dir_ours = './output/graphs/ours'
+    graph_out_dir_ours = 'output/graphs/metrla'
 
     offset = 0
     for batch in range(0, 10):
