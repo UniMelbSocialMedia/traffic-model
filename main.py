@@ -10,6 +10,7 @@ from train import train
 from utils.data_utils import create_lookup_index
 from utils.logger import logger
 from utils.masked_mae_loss import Masked_MAE_Loss
+from utils.masked_rmse_loss import Masked_RMSE_Loss
 
 
 def train_validate(model, configs: dict, data_loader: DataLoader):
@@ -17,7 +18,8 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
         model.load_state_dict(torch.load(configs['model_input_path']))
 
     # mse_loss_fn = nn.L1Loss()
-    mse_loss_fn = Masked_MAE_Loss()
+    # mse_loss_fn = Masked_MAE_Loss()
+    mse_loss_fn = Masked_RMSE_Loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1,
                                                                         eta_min=0.00005)
