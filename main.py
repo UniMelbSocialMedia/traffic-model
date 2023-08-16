@@ -18,16 +18,16 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
 
     # mse_loss_fn = nn.L1Loss()
     mse_loss_fn = Masked_MAE_Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1,
-                                                                        eta_min=0.00005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
+    # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1,
+    #                                                                     eta_min=0.00005)
     # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
     optimizer.zero_grad()
 
     min_val_loss = np.inf
 
     for epoch in range(configs['epochs']):
-        logger.info(f"LR: {lr_scheduler.get_last_lr()}")
+        # logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
         dec_offset = configs['transformer']['decoder']['seq_offset']
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
@@ -42,7 +42,7 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
                                                           data_loader=data_loader,
                                                           device=configs['device'],
                                                           seq_offset=dec_offset)
-        lr_scheduler.step()
+        # lr_scheduler.step()
 
         out_txt = f"Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss} " \
                   f"| mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss} " \
@@ -77,7 +77,7 @@ def prepare_data(model_configs: dict, data_configs: dict):
     data_loader = DataLoader(data_configs)
     data_loader.load_node_data_file()
     edge_index, edge_attr = data_loader.load_edge_data_file()
-    edge_index_semantic, edge_attr_semantic = data_loader.load_semantic_edge_data_file()
+    edge_index_semantic, edge_attr_semantic = data_loader.load_edge_data_file()
 
     model_configs['transformer']['decoder']['edge_index'] = edge_index
     model_configs['transformer']['decoder']['edge_attr'] = edge_attr
