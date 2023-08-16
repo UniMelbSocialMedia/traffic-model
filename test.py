@@ -6,29 +6,31 @@ from utils.math_utils import calculate_loss
 
 
 def test(_type: str,
-             model: torch.nn.Module,
-             data_loader: DataLoader,
-             device: str,
-             seq_offset: int = 0) -> tuple:
+         model: torch.nn.Module,
+         data_loader: DataLoader,
+         device: str,
+         seq_offset: int = 0) -> tuple:
     model.eval()
 
     mae_loss = 0.
     rmse_loss = 0.
     mape_loss = 0.
     n_batch = 0
+
+    dataset = data_loader.get_dataset()
     if _type == 'test':
-        n_batch = data_loader.get_dataset().get_n_batch_test()
+        n_batch = dataset.get_n_batch_test()
     elif _type == 'val':
-        n_batch = data_loader.get_dataset().get_n_batch_val()
+        n_batch = dataset.get_n_batch_val()
 
     offset = 0
     with torch.inference_mode():
         for batch in range(n_batch):
-            test_x, test_x_graph, test_y, test_y_graph, test_y_target = data_loader.load_batch(_type=_type,
-                                                                                               offset=offset,
-                                                                                               device=device)
+            test_x, time_idx, test_x_graph, test_y, test_y_graph, test_y_target = data_loader.load_batch(_type=_type,
+                                                                                                         offset=offset,
+                                                                                                         device=device)
 
-            out = model(test_x, test_x_graph, test_y, test_y_graph, False)
+            out = model(test_x, test_x_graph, test_y, test_y_graph, time_idx, False)
             out = out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1)
 
             test_y_tensor = ()
@@ -41,18 +43,18 @@ def test(_type: str,
 
             mae_loss_val, rmse_loss_val, mape_loss_val = calculate_loss(y_pred=out,
                                                                         y=test_y_target,
-                                                                        _mean=data_loader.dataset.get_mean(),
-                                                                        _std=data_loader.dataset.get_std())
+                                                                        _mean=dataset.get_mean(),
+                                                                        _std=dataset.get_std())
             mae_loss += mae_loss_val
             rmse_loss += rmse_loss_val
             mape_loss += mape_loss_val
 
             if batch % 100 == 0:
-                logger.info(f"MAE {mae_loss/(batch + 1)}")
+                logger.info(f"MAE {mae_loss / (batch + 1)}")
 
-            offset += data_loader.batch_size
+            offset += dataset.batch_size
 
-    mae_loss = mae_loss / float(data_loader.n_batch_test)
-    rmse_loss = rmse_loss / float(data_loader.n_batch_test)
-    mape_loss = mape_loss / float(data_loader.n_batch_test)
+    mae_loss = mae_loss / float(dataset.n_batch_test)
+    rmse_loss = rmse_loss / float(dataset.n_batch_test)
+    mape_loss = mape_loss / float(dataset.n_batch_test)
     return mae_loss, rmse_loss, mape_loss

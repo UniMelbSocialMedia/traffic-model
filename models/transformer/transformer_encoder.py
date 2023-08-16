@@ -88,7 +88,8 @@ class TransformerEncoder(nn.Module):
 
         return embed_out
 
-    def forward(self, x, graph_x, graph_x_semantic):
+    def forward(self, x, graph_x, graph_x_semantic, time_idx):
+        x = torch.concat((x, time_idx), dim=-1)
         embed_out = self._derive_emb_out(x, graph_x, graph_x_semantic)
 
         embed_out = embed_out.permute(1, 0, 2, 3)  # B, T, N, F -> T, B, N , F (4, 36, 170, 16) -> (36, 4, 170, 16)

@@ -95,7 +95,9 @@ class DataLoader:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
 
             new_x_set[i] = tmp
-        return new_x_set
+
+        time_idx = x_set[:, :, :, 1:2]
+        return new_x_set, time_idx
 
     # generate training, validation and test data
     def load_node_data_file(self):
@@ -153,9 +155,9 @@ class DataLoader:
         validation_y_set = seq_val[total_drop:, self.len_input:]
         testing_y_set = seq_test[total_drop:, self.len_input:]
 
-        new_train_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set = self._generate_new_x_arr(testing_x_set, records_time_idx)
+        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
+        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
+        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -164,6 +166,11 @@ class DataLoader:
             (new_val_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 0:1]), axis=1)
         testing_y_set = np.concatenate(
             (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
+
+        # concat time idx
+        new_train_x_set = np.concatenate((new_train_x_set, train_time_idx), axis=-1)
+        new_val_x_set = np.concatenate((new_val_x_set, val_time_idx), axis=-1)
+        new_test_x_set = np.concatenate((new_test_x_set, test_time_idx), axis=-1)
 
         # z-score normalization on input and target values
         stats_x, x_train, x_val, x_test = z_score_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
@@ -189,6 +196,7 @@ class DataLoader:
             n_batch_train=self.n_batch_train,
             n_batch_test=self.n_batch_test,
             n_batch_val=self.n_batch_val,
+            batch_size=self.batch_size,
         )
 
         with open(self.preprocess_output_path, 'wb') as file:
@@ -253,7 +261,8 @@ class DataLoader:
         ys = self.dataset.get_y(_type)
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        xs = xs[offset: limit, :]  # [9358, 13, 228, 1]
+        enc_xs_time_idx = torch.Tensor(xs[offset: limit, :, :, -1:]).to(device)
+        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1]
         ys = ys[offset: limit, :]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
@@ -357,4 +366,4 @@ class DataLoader:
         if not self.non_graph_dec_input:
             dec_ys = None
 
-        return enc_xs, enc_xs_graphs_all, dec_ys, dec_ys_graph_all, dec_ys_target
+        return enc_xs, enc_xs_time_idx, enc_xs_graphs_all, dec_ys, dec_ys_graph_all, dec_ys_target

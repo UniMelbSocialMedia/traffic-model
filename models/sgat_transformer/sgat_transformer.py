@@ -48,7 +48,7 @@ class SGATTransformer(nn.Module):
                                     len(graph_x[0][0][0]), emb_dim)).to(self.device)
         return enc_outs
 
-    def forward(self, x, graph_x, y=None, graph_y=None, train=True):
+    def forward(self, x, graph_x, y=None, graph_y=None, time_idx=None, train=True):
         enc_outs = self._create_enc_out(x, graph_x)
         tgt_mask = self._create_mask(enc_outs.shape[1], self.device)
 
@@ -57,7 +57,7 @@ class SGATTransformer(nn.Module):
             graph_x_i = graph_x[0][idx] if graph_x[0] is not None else None
             graph_x_i_semantic = graph_x[1][idx] if graph_x[1] is not None else None
 
-            enc_out = encoder(x_i, graph_x_i, graph_x_i_semantic)
+            enc_out = encoder(x_i, graph_x_i, graph_x_i_semantic, time_idx)
             enc_outs[idx] = enc_out
 
         if train:
