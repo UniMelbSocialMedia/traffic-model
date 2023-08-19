@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from models.sgat.gat_layer import GATLayer
+from models.sgat.deprecated.gat_layer import GATLayer
 
 
 class GAT(nn.Module):

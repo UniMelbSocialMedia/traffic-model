@@ -76,16 +76,14 @@ def prepare_data(model_configs: dict, data_configs: dict):
 
     data_loader = DataLoader(data_configs)
     data_loader.load_node_data_file()
-    edge_index, edge_attr = data_loader.load_edge_data_file()
+    graph_data = data_loader.load_node_edge_data()
     edge_index_semantic, edge_attr_semantic = data_loader.load_semantic_edge_data_file()
 
-    model_configs['transformer']['decoder']['edge_index'] = edge_index
-    model_configs['transformer']['decoder']['edge_attr'] = edge_attr
+    model_configs['transformer']['decoder']['sgat']['graph_data'] = graph_data
     model_configs['transformer']['decoder']['edge_index_semantic'] = edge_index_semantic
     model_configs['transformer']['decoder']['edge_attr_semantic'] = edge_attr_semantic
 
-    model_configs['transformer']['encoder']['edge_index'] = edge_index
-    model_configs['transformer']['encoder']['edge_attr'] = edge_attr
+    model_configs['transformer']['encoder']['sgat']['graph_data'] = graph_data
     model_configs['transformer']['encoder']['edge_index_semantic'] = edge_index_semantic
     model_configs['transformer']['encoder']['edge_attr_semantic'] = edge_attr_semantic
 

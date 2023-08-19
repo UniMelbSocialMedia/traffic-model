@@ -3,9 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from torch.nn import Linear
 
-from models.sgat.gat_conv.gat_conv_v4.gat_conv_v4 import GATConvV4
-from models.sgat.gat_conv.gat_conv_v6.gat_conv_v6 import GATConvV6
-from models.sgat.gat_conv.gat_conv_v7.gat_conv_v7 import GATConvV7
+from models.sgat.deprecated.gat_conv.gat_conv_v4.gat_conv_v4 import GATConvV4
+from models.sgat.deprecated.gat_conv.gat_conv_v6.gat_conv_v6 import GATConvV6
 
 
 class GATV2(nn.Module):

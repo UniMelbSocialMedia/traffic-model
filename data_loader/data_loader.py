@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 
 import torch
+import dgl
 
 from utils.data_utils import scale_weights, attach_prev_dys_seq, seq_gen_v2, derive_rep_timeline
 from data_loader.dataset import Dataset
@@ -197,23 +198,32 @@ class DataLoader:
     def get_dataset(self):
         return self.dataset
 
-    def load_edge_data_file(self):
+    def load_node_edge_data(self):
         w = pd.read_csv(self.edge_weight_filename, header=None).values
 
-        dst_edges = []
-        src_edges = []
-        edge_attr = []
+        edge_list = []
+        weights = []
         for row in range(w.shape[0]):
             for col in range(w.shape[1]):
                 if w[row][col] != 0:
-                    dst_edges.append(col)
-                    src_edges.append(row)
-                    edge_attr.append([w[row][col]])
+                    edge_list.append((row, col))
+                    weights.append(w[row][col])
 
-        edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling, min_max=True)
+        scaled_weights = scale_weights(weights, self.edge_weight_scaling, min_max=True)
+        edge_list = [(edge_list[i][0], edge_list[i][1], scaled_weights[i]) for i in range(len(edge_list))]
 
-        return edge_index, edge_attr
+        g = dgl.DGLGraph()  # define a graph
+        g.add_nodes(self.num_of_vertices)
+
+        src, dst, cost = tuple(zip(*edge_list))
+        # add edges , Assigning edge features
+        g.add_edges(src, dst)
+        g.edges[src, dst].data['w'] = torch.Tensor(cost)
+        print('We have %d nodes.' % g.number_of_nodes())
+        print('We have %d edges.' % g.number_of_edges())
+        print("g.node_attr", g.node_attr_schemes())  # no features assigned to nodes yield
+        print("g.edge_attr", g.edge_attr_schemes())
+        return g
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')

@@ -24,10 +24,10 @@ from torch_geometric.utils import (
 )
 from torch_geometric.utils.sparse import set_sparse_value
 
-from models.sgat.gat_conv.gat_conv_v4.message_passing_v4 import MessagePassingV4
+from models.sgat.deprecated.gat_conv.gat_conv_v6.message_passing_v6 import MessagePassingV6
 
 
-class GATConvV4(MessagePassingV4):
+class GATConvV6(MessagePassingV6):
     r"""The graph attentional operator from the `"Graph Attention Networks"
     <https://arxiv.org/abs/1710.10903>`_ paper
 
@@ -145,9 +145,6 @@ class GATConvV4(MessagePassingV4):
             self.lin_src = Linear(in_channels, heads * out_channels,
                                   bias=False, weight_initializer='glorot')
             self.lin_dst = self.lin_src
-
-            self.lin_skip = Linear(in_channels, heads * out_channels, False,
-                                   weight_initializer='glorot')
         else:
             self.lin_src = Linear(in_channels[0], heads * out_channels, False,
                                   weight_initializer='glorot')
@@ -178,7 +175,6 @@ class GATConvV4(MessagePassingV4):
     def reset_parameters(self):
         super().reset_parameters()
         self.lin_src.reset_parameters()
-        self.lin_skip.reset_parameters()
         self.lin_dst.reset_parameters()
         if self.lin_edge is not None:
             self.lin_edge.reset_parameters()
@@ -187,9 +183,9 @@ class GATConvV4(MessagePassingV4):
         glorot(self.att_edge)
         zeros(self.bias)
 
-    def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
+    def forward(self, x: Union[Tensor, OptPairTensor], x_skip: Union[Tensor, OptPairTensor], edge_index: Adj,
                 edge_attr: OptTensor = None, size: Size = None,
-                return_attention_weights=None, skip_attn=False):
+                return_attention_weights=None):
         # type: (Union[Tensor, OptPairTensor], Tensor, OptTensor, Size, NoneType) -> Tensor  # noqa
         # type: (Union[Tensor, OptPairTensor], SparseTensor, OptTensor, Size, NoneType) -> Tensor  # noqa
         # type: (Union[Tensor, OptPairTensor], Tensor, OptTensor, Size, bool) -> Tuple[Tensor, Tuple[Tensor, Tensor]]  # noqa
@@ -216,7 +212,8 @@ class GATConvV4(MessagePassingV4):
         # transform source and target node features via separate weights:
         if isinstance(x, Tensor):
             assert x.dim() == 2, "Static graphs not supported in 'GATConv'"
-            x_src = x_dst = self.lin_src(x).view(-1, H, C)
+            x_src = self.lin_src(x_skip).view(-1, H, C)
+            x_dst = self.lin_dst(x).view(-1, H, C)
         else:  # Tuple of source and target node features:
             x_src, x_dst = x
             assert x_src.dim() == 2, "Static graphs not supported in 'GATConv'"
@@ -224,7 +221,6 @@ class GATConvV4(MessagePassingV4):
             if x_dst is not None:
                 x_dst = self.lin_dst(x_dst).view(-1, H, C)
 
-        if not skip_attn: x_skip = self.lin_skip(x).view(-1, H, C)
         x = (x_src, x_dst)
 
         # Next, we compute node-level attention coefficients, both for source
@@ -233,9 +229,7 @@ class GATConvV4(MessagePassingV4):
         alpha_dst = None if x_dst is None else (x_dst * self.att_dst).sum(-1)
         alpha = (alpha_src, alpha_dst)
 
-        # keep original edge_index to pass into skip connection methods
-        edge_index_original = edge_index
-
+        self.add_self_loops = False
         if self.add_self_loops:
             if isinstance(edge_index, Tensor):
                 # We only want to add self-loops for nodes that appear both as
@@ -264,23 +258,10 @@ class GATConvV4(MessagePassingV4):
         # propagate_type: (x: OptPairTensor, alpha: Tensor)
         out = self.propagate(edge_index, x=x, alpha=alpha, size=size)
 
-        # remove edge
-        if isinstance(edge_index_original, Tensor):
-            edge_index_original, _ = remove_self_loops(edge_index_original, None)
-
-        edge_index_original = edge_index_original.type(torch.int64)
-
-        # propagate skip connection msg
-        skip_out = None
-        if not skip_attn:
-            skip_out = self.propagate_skip_connection(edge_index=edge_index_original, x=x_skip, size=size)
-
         if self.concat:
             out = out.view(-1, self.heads * self.out_channels)
-            if not skip_attn: skip_out = skip_out.view(-1, self.heads * self.out_channels)
         else:
             out = out.mean(dim=1)
-            if not skip_attn: skip_out = skip_out.mean(dim=1)
 
         if self.bias is not None:
             out = out + self.bias
@@ -296,7 +277,7 @@ class GATConvV4(MessagePassingV4):
             elif isinstance(edge_index, SparseTensor):
                 return out, edge_index.set_value(alpha, layout='coo')
         else:
-            return out, skip_out
+            return out
 
     def edge_update(self, alpha_j: Tensor, alpha_i: OptTensor,
                     edge_attr: OptTensor, index: Tensor, ptr: OptTensor,
@@ -321,9 +302,6 @@ class GATConvV4(MessagePassingV4):
 
     def message(self, x_j: Tensor, alpha: Tensor) -> Tensor:
         return alpha.unsqueeze(-1) * x_j
-
-    def message_original(self, x_j: Tensor) -> Tensor:
-        return x_j
 
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}({self.in_channels}, '
