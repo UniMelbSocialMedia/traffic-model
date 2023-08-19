@@ -5,7 +5,7 @@ model:
   model_output_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_{}_model.pt"
   model_input_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_13_model.pt"
   load_saved_model: False
-  device: cpu
+  device: cuda
   transformer:
     encoder:
       features: 2 # To indicates multiple encoders (feature-wise). default is 1
@@ -78,6 +78,6 @@ data:
   last_week: False
   last_day: True
   num_days_per_week: 5
-  rep_vectors: False
-  preprocess: False
+  rep_vectors: True
+  preprocess: True
   preprocess_output_path: "data/PEMSD7/PeMSD7_Preprocessed.pickle"
