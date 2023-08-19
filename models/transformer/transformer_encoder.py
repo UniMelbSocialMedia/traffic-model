@@ -61,7 +61,7 @@ class TransformerEncoder(nn.Module):
         # by merging embeddings we increase the output dimension
         if self.merge_emb:
             self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 3)
+        self.out_norm = nn.LayerNorm(self.emb_dim)
 
     def _create_graph(self, x, edge_index, edge_attr):
         graph = data.Data(x=Tensor(x),
@@ -114,29 +114,26 @@ class TransformerEncoder(nn.Module):
             else:
                 q, k, v = out, out, out
 
-            if enc_idx == 0:
-                graph_x = torch.concat((q, k, v), dim=-1)
-
-                graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
-                graph_x = graph_x.permute(0, 2, 1, 3)
-
-                if self.graph_input:
-                    out_graph = graph(graph_x)
-                if self.graph_semantic_input:
-                    out_graph_semantic = graph_semantic(graph_x)
-
-                if self.graph_input and self.graph_semantic_input:
-                    out = self.out_norm(out_graph + out_graph_semantic)
-                elif self.graph_input and not self.graph_semantic_input:
-                    out = out_graph
-                elif not self.graph_input and self.graph_semantic_input:
-                    out = out_graph_semantic
-
-                out = self._organize_matrix(out)
-                q = out[:, :, :self.emb_dim]
-                k = out[:, :, self.emb_dim:2 * self.emb_dim]
-                v = out[:, :, 2 * self.emb_dim:]
-
             out = layer(q, k, v)
+
+        if enc_idx == 0:
+            graph_x = out
+
+            graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
+            graph_x = graph_x.permute(0, 2, 1, 3)
+
+            if self.graph_input:
+                out_graph = graph(graph_x)
+            if self.graph_semantic_input:
+                out_graph_semantic = graph_semantic(graph_x)
+
+            if self.graph_input and self.graph_semantic_input:
+                out = self.out_norm(out_graph + out_graph_semantic)
+            elif self.graph_input and not self.graph_semantic_input:
+                out = out_graph
+            elif not self.graph_input and self.graph_semantic_input:
+                out = out_graph_semantic
+
+            out = self._organize_matrix(out)
 
         return out  # 32x10x512
