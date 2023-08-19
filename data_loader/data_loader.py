@@ -17,6 +17,8 @@ class DataLoader:
         self.n_batch_test = None
         self.n_batch_val = None
 
+        self.device = data_configs['device']
+
         self.num_of_vertices = data_configs['num_of_vertices']
         self.points_per_hour = data_configs['points_per_hour']
         self.len_input = data_configs['len_input']
@@ -223,7 +225,7 @@ class DataLoader:
         print('We have %d edges.' % g.number_of_edges())
         print("g.node_attr", g.node_attr_schemes())  # no features assigned to nodes yield
         print("g.edge_attr", g.edge_attr_schemes())
-        return g
+        return g.to(self.device)
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')
