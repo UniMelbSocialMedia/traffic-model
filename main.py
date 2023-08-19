@@ -69,6 +69,7 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
 
 def prepare_data(model_configs: dict, data_configs: dict):
     data_configs['batch_size'] = model_configs['batch_size']
+    data_configs['device'] = model_configs['device']
     data_configs['enc_features'] = model_configs['transformer']['encoder']['features']
     data_configs['dec_seq_offset'] = model_configs['transformer']['decoder']['seq_offset']
     dec_seq_len = model_configs['transformer']['decoder']['seq_len']
