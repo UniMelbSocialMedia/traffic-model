@@ -103,8 +103,7 @@ class TransformerEncoder(nn.Module):
         embed_out = self._organize_matrix(embed_out)
 
         out = self.positional_encoder(embed_out, self.lookup_idx)
-        for (layer, conv_q, conv_k, graph, graph_semantic) in \
-                zip(self.layers, self.conv_q_layers, self.conv_k_layers, self.graphs, self.graphs_semantic):
+        for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
 
             if self.local_trends:
                 out_transposed = out.transpose(2, 1)
@@ -117,23 +116,24 @@ class TransformerEncoder(nn.Module):
             out = layer(q, k, v)
 
         if enc_idx == 0:
-            graph_x = out
+            for (graph, graph_semantic) in zip(self.graphs, self.graphs_semantic):
+                graph_x = out
 
-            graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
-            graph_x = graph_x.permute(0, 2, 1, 3)
+                graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
+                graph_x = graph_x.permute(0, 2, 1, 3)
 
-            if self.graph_input:
-                out_graph = graph(graph_x)
-            if self.graph_semantic_input:
-                out_graph_semantic = graph_semantic(graph_x)
+                if self.graph_input:
+                    out_graph = graph(graph_x)
+                if self.graph_semantic_input:
+                    out_graph_semantic = graph_semantic(graph_x)
 
-            if self.graph_input and self.graph_semantic_input:
-                out = self.out_norm(out_graph + out_graph_semantic)
-            elif self.graph_input and not self.graph_semantic_input:
-                out = out_graph
-            elif not self.graph_input and self.graph_semantic_input:
-                out = out_graph_semantic
+                if self.graph_input and self.graph_semantic_input:
+                    out = self.out_norm(out_graph + out_graph_semantic)
+                elif self.graph_input and not self.graph_semantic_input:
+                    out = out_graph
+                elif not self.graph_input and self.graph_semantic_input:
+                    out = out_graph_semantic
 
-            out = self._organize_matrix(out)
+                out = self._organize_matrix(out)
 
         return out  # 32x10x512
