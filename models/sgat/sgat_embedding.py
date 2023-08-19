@@ -22,7 +22,7 @@ class SGATEmbedding(nn.Module):
 
         self.layer_stack = nn.ModuleList()
         for l in range(self.n_layers):
-            in_f_size = out_f_sizes[l - 1] * n_heads[l - 1] if l else first_in_f_size
+            in_f_size = out_f_sizes[l - 1] if l else first_in_f_size
             gat_layer = GATConv(in_feats=in_f_size,
                                 out_feats=out_f_sizes[l],
                                 num_heads=n_heads[l],
