@@ -25,11 +25,11 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
     optimizer.zero_grad()
 
     min_val_loss = np.inf
+    dec_offset = configs['transformer']['decoder']['seq_offset']
 
     for epoch in range(configs['epochs']):
         logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
-        dec_offset = configs['transformer']['decoder']['seq_offset']
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
                                                                  optimizer=optimizer,
@@ -37,7 +37,7 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
                                                                  device=configs['device'],
                                                                  seq_offset=dec_offset)
 
-        mae_val_loss, rmse_val_loss, mape_val_loss = test(_type='test',
+        mae_val_loss, rmse_val_loss, mape_val_loss = test(_type='val',
                                                           model=model,
                                                           data_loader=data_loader,
                                                           device=configs['device'],
@@ -61,8 +61,8 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
     mae_test_loss, rmse_test_loss, mape_test_loss = test(_type='test',
                                                          model=model,
                                                          data_loader=data_loader,
-                                                         device=model_configs['device'],
-                                                         seq_offset=model_configs['dec_seq_offset'])
+                                                         device=configs['device'],
+                                                         seq_offset=dec_offset)
 
     logger.info(f"mae_test_loss: {mae_test_loss} | rmse_test_loss: {rmse_test_loss} | mape_test_loss: {mape_test_loss}")
 
