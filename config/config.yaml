@@ -51,7 +51,7 @@ model:
       decoder_block:
         n_heads: 8
         expansion_factor: 4
-        cross_attn_features: 1 # Used to indicates how many feature-wise cross attentions in the decoder
+        cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
         src_dropout: 0.3
         cross_attn_dropout: 0.3
         ff_dropout: 0.2

@@ -160,18 +160,20 @@ class TransformerEncoder(nn.Module):
             if self.graph_semantic_input:
                 out_g_semantic = self.graph_embedding_semantic(out_g_semantic).transpose(0, 1)
 
-            if self.graph_input and self.graph_semantic_input:
-                out_g = self.out_norm(out_g_dis + out_g_semantic)
-            elif self.graph_input and not self.graph_semantic_input:
-                out_g = out_g_dis
-            elif not self.graph_input and self.graph_semantic_input:
-                out_g = out_g_semantic
-            elif not self.graph_input and not self.graph_semantic_input:
-                out_e = self.dropout_e(self.out_e_lin(out_e))
-                return out_e
+            # if self.graph_input and self.graph_semantic_input:
+            #     out_g = self.out_norm(out_g_dis + out_g_semantic)
+            # elif self.graph_input and not self.graph_semantic_input:
+            #     out_g = out_g_dis
+            # elif not self.graph_input and self.graph_semantic_input:
+            #     out_g = out_g_semantic
+            # elif not self.graph_input and not self.graph_semantic_input:
+            #     out_e = self.dropout_e(self.out_e_lin(out_e))
+            #     return out_e
 
-            out = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
-            return out  # 32x10x512
+            out_g_dis = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g_dis)
+            out_g_semantic = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g_semantic)
+
+            return [out_g_dis, out_g_semantic]  # 32x10x512
 
         else:
             out_e = self.dropout_e(self.out_e_lin(out_e))
