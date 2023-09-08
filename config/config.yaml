@@ -18,7 +18,7 @@ model:
       local_trends: True
       graph_semantic_input: False
       graph_input: True
-      dropout_e: 0.0
+      dropout_e: 0.2
       encoder_block:
         n_heads: 8
         expansion_factor: 4
@@ -27,14 +27,14 @@ model:
       sgat:
         first_in_f_size: 576
         n_layers: 1
-        out_f_sizes: [ 576, 576 ]
+        out_f_sizes: [ 64, 64 ]
         n_heads: [ 4, 1 ]
         alpha: 0.2
         dropout: 0.7
         edge_dim: 1
         skip_conn: False
     decoder:
-      emb_dim: 16
+      emb_dim: 64
       seq_len: 13
       seq_offset: 1 # Indicates how many timesteps in the previous hour consider as inputs in the decoder
       input_dim: 1
