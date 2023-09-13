@@ -151,7 +151,7 @@ if __name__ == '__main__':
     edge_details_file = "../data/PEMS07/PeMS07_time_idx_semantic_edges.pickle"
     records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=True)
 
-    n_sensors = 307
+    n_sensors = 883
     semantic_rels = {}
 
     for sensor in range(150, 307):

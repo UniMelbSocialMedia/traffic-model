@@ -248,17 +248,20 @@ class DataLoader:
             print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
 
     def load_semantic_edge_data_file(self):
-        semantic_file = open(self.semantic_adj_filename, 'rb')
-        semantic_edge_details = pickle.load(semantic_file)
+        try:
+            semantic_file = open(self.semantic_adj_filename, 'rb')
+            semantic_edge_details = pickle.load(semantic_file)
 
-        edge_index = np.array(semantic_edge_details[0])
-        edge_attr = np.array(semantic_edge_details[1])
+            edge_index = np.array(semantic_edge_details[0])
+            edge_attr = np.array(semantic_edge_details[1])
 
-        edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threashold].reshape(2, -1)
-        edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
-        edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threashold].reshape(-1, 1)
+            edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threashold].reshape(2, -1)
+            edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
+            edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threashold].reshape(-1, 1)
 
-        return [edge_index, edge_attr]
+            return [edge_index, edge_attr]
+        except FileNotFoundError:
+            return [None, None]
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
         xs = self.dataset.get_data(_type)
