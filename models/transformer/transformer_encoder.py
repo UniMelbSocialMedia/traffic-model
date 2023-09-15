@@ -168,9 +168,7 @@ class TransformerEncoder(nn.Module):
                 out_e = self.dropout_e(self.out_e_lin(out_e))
                 return out_e
 
-            out1 = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g_dis)
-            out2 = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g_semantic)
-            return [out1, out2]  # 32x10x512
+            return [self.dropout_e(self.out_e_lin(out_e)), self._organize_matrix(out_g_dis), self._organize_matrix(out_g_semantic)]  # 32x10x512
 
         else:
             out_e = self.dropout_e(self.out_e_lin(out_e))
