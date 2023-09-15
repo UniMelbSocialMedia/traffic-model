@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 
-from models.sgat.sgat_embedding import SGATEmbedding
 from models.transformer.positional_embedding import PositionalEmbedding
 from models.transformer.decoder_block import DecoderBlock
 from models.transformer.token_embedding import TokenEmbedding
@@ -31,9 +30,6 @@ class TransformerDecoder(nn.Module):
 
         # embedding
         self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
-        configs['sgat']['seq_len'] = configs['seq_len']
-        self.graph_embedding = SGATEmbedding(configs['sgat'])
-        self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
         self.position_embedding = PositionalEmbedding(max_lookup_len, self.emb_dim)
 
         # convolution related
@@ -94,21 +90,34 @@ class TransformerDecoder(nn.Module):
         tgt_mask_conv = tgt_mask_conv.expand(x.shape[0], self.seq_len, self.emb_dim, self.seq_len).to(device)
         return tgt_mask_conv
 
+    def _organize_matrix(self, mat):
+        mat = mat.permute(1, 0, 2, 3)  # B, T, N, F -> T, B, N , F (4, 36, 170, 16) -> (36, 4, 170, 16)
+        mat_shp = mat.shape
+        mat = mat.reshape(mat_shp[0], mat_shp[1] * mat_shp[2], mat_shp[3])  # (36, 4 * 170, 16)
+        mat = mat.permute(1, 0, 2)  # (4 * 170, 36, 16)
+        return mat
+
+    def _return_mat(self, out, shp):
+        out = self.fc_out(out)
+
+        out = out.permute(1, 0, 2)
+        out = out.reshape(shp[1], shp[0], shp[2], out.shape[-1])
+        out = out.permute(1, 0, 2, 3)
+
+        return out
+
     def forward(self, x, enc_x, tgt_mask, device):
         embed_out = self.embedding(x)
-        embed_out = embed_out.permute(1, 0, 2, 3)  # B, T, N, F -> T, B, N , F (4, 36, 170, 16) -> (36, 4, 170, 16)
         embed_shp = embed_out.shape
-        embed_out = embed_out.reshape(embed_shp[0], embed_shp[1] * embed_shp[2], embed_shp[3])  # (36, 4 * 170, 16)
-        embed_out = embed_out.permute(1, 0, 2)
+        embed_out = self._organize_matrix(embed_out)
 
-        x = self.position_embedding(embed_out, self.lookup_idx)  # 32x10x512
+        out_d = self.position_embedding(embed_out, self.lookup_idx)  # 32x10x512
 
-        tgt_mask_conv = self.create_conv_mask(x, device)
+        tgt_mask_conv = self.create_conv_mask(out_d, device)
 
         for idx, layer in enumerate(self.layers):
             if self.local_trends:
-                # x = self.conv_q_layer(x.transpose(2, 1)).transpose(2, 1)
-                x = self.calculate_masked_src(x, self.conv_q_layers[idx], tgt_mask_conv, device)
+                out_d = self.calculate_masked_src(out_d, self.conv_q_layers[idx], tgt_mask_conv, device)
 
             enc_xs = []
             for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
@@ -119,12 +128,6 @@ class TransformerDecoder(nn.Module):
                     enc_xs.append(
                         f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
-            x = layer(x, enc_xs, tgt_mask)
+            out_d = layer(out_d, enc_xs, tgt_mask)
 
-        out = self.fc_out(x)
-
-        out = out.permute(1, 0, 2)
-        out = out.reshape(embed_shp[0], embed_shp[1], embed_shp[2], out.shape[-1])
-        out = out.permute(1, 0, 2, 3)
-
-        return out
+        return self._return_mat(out_d, embed_shp)

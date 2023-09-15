@@ -85,7 +85,9 @@ class DataLoader:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
 
             new_x_set[i] = tmp
-        return new_x_set
+
+        time_idx = x_set[:, :, :, 1:2]
+        return new_x_set, time_idx
 
     # generate training, validation and test data
     def load_node_data_file(self):
@@ -143,9 +145,9 @@ class DataLoader:
         validation_y_set = seq_val[total_drop:, self.len_input:]
         testing_y_set = seq_test[total_drop:, self.len_input:]
 
-        new_train_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set = self._generate_new_x_arr(testing_x_set, records_time_idx)
+        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
+        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
+        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -155,14 +157,14 @@ class DataLoader:
         testing_y_set = np.concatenate(
             (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
 
-        # concat time idx
-        # new_train_x_set = np.concatenate((new_train_x_set, train_time_idx), axis=-1)
-        # new_val_x_set = np.concatenate((new_val_x_set, val_time_idx), axis=-1)
-        # new_test_x_set = np.concatenate((new_test_x_set, test_time_idx), axis=-1)
-
         # z-score normalization on input and target values
         stats_x, x_train, x_val, x_test = z_score_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
         stats_y, y_train, y_val, y_test = z_score_normalize(training_y_set, validation_y_set, testing_y_set)
+
+        # concat time idx
+        x_train = np.concatenate((x_train, train_time_idx), axis=-1)
+        x_val = np.concatenate((x_val, val_time_idx), axis=-1)
+        x_test = np.concatenate((x_test, test_time_idx), axis=-1)
 
         # shuffling training data 0th axis
         idx_samples = np.arange(0, x_train.shape[0])
@@ -216,80 +218,38 @@ class DataLoader:
         return edge_index, edge_attr
 
     def load_semantic_edge_data_file(self):
-        semantic_file = open(self.semantic_adj_filename, 'rb')
-        sensor_details = pickle.load(semantic_file)
+        # semantic_file = open(self.semantic_adj_filename, 'rb')
+        # sensor_details = pickle.load(semantic_file)
 
         dst_edges = []
         src_edges = []
         edge_attr = []
-        for i, (sensor, neighbours) in enumerate(sensor_details.items()):
-            for j, (neighbour, distance) in enumerate(neighbours.items()):
-                if j > 2:
-                    break
-                dst_edges.append(sensor)
-                src_edges.append(neighbour)
-                edge_attr.append([distance])
-
+        # for i, (sensor, neighbours) in enumerate(sensor_details.items()):
+        #     for j, (neighbour, distance) in enumerate(neighbours.items()):
+        #         if j > 2:
+        #             break
+        #         dst_edges.append(sensor)
+        #         src_edges.append(neighbour)
+        #         edge_attr.append([distance])
+        #
         edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling, min_max=True)
+        # edge_attr = scale_weights(edge_attr, self.edge_weight_scaling, min_max=True)
 
         return edge_index, edge_attr
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
-
         xs = self.dataset.get_data(_type)
         ys = self.dataset.get_y(_type)
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        xs = xs[offset: limit, :]  # [9358, 13, 228, 1]
+        enc_xs_time_idx = xs[offset: limit, :, :, -1:]
+        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1] # Avoid selecting time idx
         ys = ys[offset: limit, :]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
         ys_input = np.copy(ys)
         if _type != 'train':
             ys_input[:, self.dec_seq_offset:, :, :] = 0
-
-        # encoder part of the model consists of multiple encoders # of encoders defined by self.enc_features
-        # each encoder can accept distance-based graph and semantic graphs as inputs
-        # if we use rep vectors and previous time seq values, those two will be input to two separate encoders
-        # and enc_features will be 2
-        # enc_xs_graphs = [[] for i in range(self.enc_features)]
-        # enc_xs_graphs_semantic = [[] for i in range(self.enc_features)]
-
-        # for k in range(self.enc_features):
-        #     batched_xs_graphs = [[] for _ in range(self.batch_size)]
-        #     batched_xs_graphs_semantic = [[] for _ in range(self.batch_size)]
-        #
-        #     # process batch-wise
-        #     for idx, x_timesteps in enumerate(xs):  # x_timesteps -> (T, N, F), xs -> (B, T, N, F)
-        #         graph = []
-        #         graph_semantic = []
-        #
-        #         for inner_f in range(num_inner_f_enc):
-        #             start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
-        #             end_idx = start_idx + 1
-        #             if self.graph_enc_input:
-        #                 [graph.append(to(self._create_graph(x[:, start_idx: end_idx],
-        #                                                     self.edge_index,
-        #                                                     self.edge_attr)))
-        #                  for x in x_timesteps]
-        #             if self.graph_enc_semantic_input:
-        #                 [graph_semantic.append(to(self._create_graph(x[:, start_idx: end_idx],
-        #                                                              self.edge_index_semantic,
-        #                                                              self.edge_attr_semantic)))
-        #                  for x in x_timesteps]
-        #
-        #         batched_xs_graphs[idx] = graph
-        #         batched_xs_graphs_semantic[idx] = graph_semantic
-        #
-        #     enc_xs_graphs[k] = batched_xs_graphs
-        #     enc_xs_graphs_semantic[k] = batched_xs_graphs_semantic
-        #
-        # if not self.graph_enc_input:
-        #     enc_xs_graphs = None
-        # if not self.graph_enc_semantic_input:
-        #     enc_xs_graphs_semantic = None
-        # enc_xs_graphs_all = [enc_xs_graphs, enc_xs_graphs_semantic]
 
         num_inner_f_enc = int(xs.shape[-1] / self.enc_features)
         enc_xs = []
@@ -315,22 +275,9 @@ class DataLoader:
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data
         for idx, y_timesteps in enumerate(ys_input):
-            # graphs = []
-            # graphs_semantic = []
-            # for i, y in enumerate(y_timesteps):
-            #     if self.graph_dec_input:
-            #         graph = self._create_graph(y, self.edge_index, self.edge_attr)
-            #         graphs.append(to(graph))
-            #     if self.graph_dec_semantic_input:
-            #         graph_semantic = self._create_graph(y, self.edge_index_semantic, self.edge_attr_semantic)
-            #         graphs_semantic.append(to(graph_semantic))
-            #
-            # dec_ys_graphs[idx] = graphs
-            # dec_ys_graphs_semantic[idx] = graphs_semantic
-
             dec_ys[idx] = torch.Tensor(y_timesteps).to(device)
             dec_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
 
         dec_ys = torch.stack(dec_ys)
 
-        return enc_xs, dec_ys, dec_ys_target
+        return enc_xs, enc_xs_time_idx, dec_ys, dec_ys_target

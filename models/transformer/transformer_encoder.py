@@ -18,6 +18,7 @@ class TransformerEncoder(nn.Module):
         input_dim = configs['input_dim']
         self.merge_emb = configs['merge_emb']
         emb_expansion_factor = configs['emb_expansion_factor']
+        dropout_e = configs['dropout_e']
         max_lookup_len = configs['max_lookup_len']
         self.lookup_idx = configs['lookup_idx']
 
@@ -25,18 +26,20 @@ class TransformerEncoder(nn.Module):
         self.device = configs['device']
         self.edge_index = configs['edge_index']
         self.edge_attr = configs['edge_attr']
-        self.edge_index_semantic = configs['edge_index_semantic']
-        self.edge_attr_semantic = configs['edge_attr_semantic']
+        self.edge_details = configs['edge_details']
         self.graph_input = configs['graph_input']
         self.graph_semantic_input = configs['graph_semantic_input']
+        self.seq_len = configs['seq_len']
 
         n_layers = configs['n_layers']
 
         # embedding
         self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
-        configs['sgat']['seq_len'] = configs['seq_len']
+        configs['sgat']['seq_len'] = self.seq_len
+        configs['sgat']['num_edges'] = 4993
         self.graph_embedding = SGATEmbedding(configs['sgat'])
         self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
+        self.bipart_lin = nn.Linear(self.emb_dim, self.seq_len * self.emb_dim)
 
         # convolution related
         self.local_trends = configs['local_trends']
@@ -59,33 +62,35 @@ class TransformerEncoder(nn.Module):
         # by merging embeddings we increase the output dimension
         if self.merge_emb:
             self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 3)
+        self.out_norm = nn.LayerNorm(self.emb_dim * 4)
+
+        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
+        self.dropout_e = nn.Dropout(dropout_e)
 
     def _create_graph(self, x, edge_index, edge_attr):
-        graph = data.Data(x=Tensor(x),
+        graph = data.Data(x=(Tensor(x[0]), Tensor(x[1])),
                           edge_index=torch.LongTensor(edge_index),
                           y=None,
                           edge_attr=Tensor(edge_attr))
         return graph
 
-    def _derive_graphs(self, x_batch):
+    def _derive_graphs(self, x_batch, x_time_idx):
         to = ToDevice(self.device)
 
         x_batch_graphs = []
         x_batch_graphs_semantic = []
         for idx, x_all_t in enumerate(x_batch):
-            graphs = []
-            graphs_semantic = []
-            for i, x in enumerate(x_all_t):
-                if self.graph_input:
-                    graph = self._create_graph(x, self.edge_index, self.edge_attr)
-                    graphs.append(to(graph))
-                if self.graph_semantic_input:
-                    graph_semantic = self._create_graph(x, self.edge_index_semantic, self.edge_attr_semantic)
-                    graphs_semantic.append(to(graph_semantic))
+            semantic_edge_index, semantic_edge_attr = self.edge_details
+            x_src = x_all_t.permute(1, 0, 2)  # N, T, F
+            x_src = x_src.reshape(x_src.shape[0], -1)  # N, T*F
 
-            x_batch_graphs.append(graphs)
-            x_batch_graphs_semantic.append(graphs_semantic)
+            if self.graph_input:
+                graph = self._create_graph((x_src, x_src), self.edge_index, self.edge_attr)
+                x_batch_graphs.append(to(graph))
+
+            if self.graph_semantic_input:
+                graph_semantic = self._create_graph((x_src, x_src), semantic_edge_index, semantic_edge_attr)
+                x_batch_graphs_semantic.append(to(graph_semantic))
 
         return x_batch_graphs, x_batch_graphs_semantic
 
@@ -96,44 +101,51 @@ class TransformerEncoder(nn.Module):
         mat = mat.permute(1, 0, 2)  # (4 * 170, 36, 16)
         return mat
 
-    def forward(self, x, enc_idx):
+    def forward(self, x, x_time_idx, enc_idx):
         embed_out = self.embedding(x)
         embed_out = self._organize_matrix(embed_out)
 
-        out = self.positional_encoder(embed_out, self.lookup_idx)
+        out_e = self.positional_encoder(embed_out, self.lookup_idx)
         for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
             if self.local_trends:
-                out_transposed = out.transpose(2, 1)
+                out_transposed = out_e.transpose(2, 1)
                 q = conv_q(out_transposed).transpose(2, 1)
                 k = conv_k(out_transposed).transpose(2, 1)
-                v = out
+                v = out_e
             else:
-                q, k, v = out, out, out
+                q, k, v = out_e, out_e, out_e
+
+            out_e = layer(q, k, v)
 
         if enc_idx == 0:
-            graph_x = torch.concat((q, k, v), dim=-1)
+            graph_x = out_e
 
             graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
             graph_x = graph_x.permute(0, 2, 1, 3)
-            out_graph, out_graph_semantic = self._derive_graphs(graph_x)
+            graph_x_shp = graph_x.shape
+            out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
 
             if self.graph_input:
-                out_graph = self.graph_embedding(out_graph).transpose(0, 1)
+                batch_size, time_steps, num_nodes, features = graph_x_shp
+                out_g_dis = self.graph_embedding(out_g_dis)  # (4, 307, 576)
+                # out_g_dis = out_g_dis.reshape(batch_size, num_nodes, time_steps, -1)  # (4, 307, 12, 16)
+                # out_g_dis = out_g_dis.permute(0, 2, 1, 3)  # (4, 12, 307, 16)
             if self.graph_semantic_input:
-                out_graph_semantic = self.graph_embedding_semantic(out_graph_semantic).transpose(0, 1)
+                out_g_semantic = self.graph_embedding_semantic(out_g_semantic)
 
             if self.graph_input and self.graph_semantic_input:
-                out = self.out_norm(out_graph + out_graph_semantic)
+                out_g = self.out_norm(out_g_dis + out_g_semantic)
             elif self.graph_input and not self.graph_semantic_input:
-                out = out_graph
+                out_g = out_g_dis
             elif not self.graph_input and self.graph_semantic_input:
-                out = out_graph_semantic
+                out_g = out_g_semantic
+            elif not self.graph_input and not self.graph_semantic_input:
+                out_e = self.dropout_e(self.out_e_lin(out_e))
+                return out_e
 
-            out = self._organize_matrix(out)
-            q = out[:, :, :self.emb_dim]
-            k = out[:, :, self.emb_dim:2*self.emb_dim]
-            v = out[:, :, 2*self.emb_dim:]
+            out = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
+            return out  # 32x10x512
 
-        out = layer(q, k, v)
-
-        return out  # 32x10x512
+        else:
+            out_e = self.dropout_e(self.out_e_lin(out_e))
+            return out_e
