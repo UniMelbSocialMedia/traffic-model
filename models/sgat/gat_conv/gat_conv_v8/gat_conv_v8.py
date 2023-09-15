@@ -134,7 +134,7 @@ class GATConvV8(MessagePassingV8):
             fill_value: Union[float, Tensor, str] = 'mean',
             bias: bool = True,
             share_weights: bool = False,
-            seq_len: int = 12,
+            seq_len: int = 36,
             **kwargs,
     ):
         super().__init__(node_dim=0, **kwargs)
