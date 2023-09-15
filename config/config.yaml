@@ -53,7 +53,7 @@ model:
         expansion_factor: 4
         cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
         src_dropout: 0.3
-        cross_attn_dropout: 0.3
+        cross_attn_dropout: [0.1, 0.4]
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208
