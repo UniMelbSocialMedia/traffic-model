@@ -30,7 +30,7 @@ class DataLoader:
         self.rep_vectors = data_configs['rep_vectors']
 
         self.batch_size = data_configs['batch_size']
-        self.enc_features = data_configs['enc_features']
+        self.enc_features = 1
         self.dec_seq_offset = data_configs['dec_seq_offset']
 
         self.preprocess = data_configs['preprocess']

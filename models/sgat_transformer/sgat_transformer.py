@@ -50,11 +50,8 @@ class SGATTransformer(nn.Module):
         enc_outs = self._create_enc_out(x)
         tgt_mask = self._create_mask(enc_outs.shape[1], self.device)
 
-        for idx, encoder in enumerate(self.encoders):
-            x_i = x[idx]
-
-            enc_out = encoder(x_i, time_idx, idx)
-            enc_outs[idx] = enc_out
+        enc_out = self.encoders[0](x[0], time_idx, 0)
+        enc_outs = enc_out
 
         if train:
             dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)

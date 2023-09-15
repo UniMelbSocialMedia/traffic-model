@@ -134,7 +134,7 @@ class GATConvV8(MessagePassingV8):
             fill_value: Union[float, Tensor, str] = 'mean',
             bias: bool = True,
             share_weights: bool = False,
-            seq_len: int = 36,
+            seq_len: int = 12,
             **kwargs,
     ):
         super().__init__(node_dim=0, **kwargs)
@@ -178,12 +178,6 @@ class GATConvV8(MessagePassingV8):
                     Linear(self.single_input_dim, heads * out_channels,
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
-
-        # For expansion of destination node's value to match with source node's values dimension
-        self.exp_lin = Linear(4608, 2304, bias=bias, weight_initializer='glorot')
-
-        # self.msg_f = torch.zeros((num_edges, 4, 64 * self.seq_len)).to('cuda')
-        # self.x_r_new = torch.zeros((36, num_edges, 4, 64)).to('cuda')
 
         # Defining multiple parameters instead of single parameter to accommodate sequence data
         self.att = Parameter(torch.Tensor(seq_len, 1, heads, out_channels))
