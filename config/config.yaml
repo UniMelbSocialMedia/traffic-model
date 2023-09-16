@@ -8,7 +8,7 @@ model:
   device: cuda
   transformer:
     encoder:
-      features: 3 # To indicates multiple encoders (feature-wise). default is 1
+      features: 2 # To indicates multiple encoders (feature-wise). default is 1
       emb_dim: 16
       seq_len: 36
       input_dim: 1
@@ -28,7 +28,7 @@ model:
         first_in_f_size: 576
         n_layers: 1
         out_f_sizes: [ 64, 576 ]
-        n_heads: [ 4, 1 ]
+        n_heads: [ 8, 1 ]
         alpha: 0.2
         dropout: 0.7
         edge_dim: 1
@@ -51,9 +51,9 @@ model:
       decoder_block:
         n_heads: 8
         expansion_factor: 4
-        cross_attn_features: 3 # Used to indicates how many feature-wise cross attentions in the decoder
+        cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
         src_dropout: 0.3
-        cross_attn_dropout: [0.3, 0.3, 0.3]
+        cross_attn_dropout: [0.3, 0.3]
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208
