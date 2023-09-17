@@ -53,7 +53,7 @@ def test(_type: str,
 
             offset += dataset.batch_size
 
-    mae_loss = mae_loss / float(dataset.n_batch_test)
-    rmse_loss = rmse_loss / float(dataset.n_batch_test)
-    mape_loss = mape_loss / float(dataset.n_batch_test)
+    mae_loss = mae_loss / float(n_batch)
+    rmse_loss = rmse_loss / float(n_batch)
+    mape_loss = mape_loss / float(n_batch)
     return mae_loss, rmse_loss, mape_loss
