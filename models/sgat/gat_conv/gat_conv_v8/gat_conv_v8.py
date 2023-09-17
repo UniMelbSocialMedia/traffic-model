@@ -179,9 +179,6 @@ class GATConvV8(MessagePassingV8):
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
 
-        # For expansion of destination node's value to match with source node's values dimension
-        self.exp_lin = Linear(4608, 2304, bias=bias, weight_initializer='glorot')
-
         # self.msg_f = torch.zeros((num_edges, 4, 64 * self.seq_len)).to('cuda')
         # self.x_r_new = torch.zeros((36, num_edges, 4, 64)).to('cuda')
 
