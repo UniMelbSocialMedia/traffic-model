@@ -68,8 +68,8 @@ model:
 
 # Data Configs
 data:
-  edge_weight_filename: "data/METRLA/adj_mx.pkl"
-  edge_weight_original_filename: "data/METRLA/adj_mx.pkl"
+  edge_weight_filename: "data/METRLA/METRLA_dij.csv"
+  edge_weight_original_filename: "data/METRLA/adj_METR-LA.pkl"
   semantic_adj_filename: "data/METRLA/PeMSD7_W_228.pickle"
   edge_weight_scaling: True
   node_data_filename: "data/METRLA/METR-LA.csv"
@@ -80,5 +80,6 @@ data:
   last_day: True
   num_days_per_week: 7
   rep_vectors: False
-  preprocess: True
+  preprocess: False
   preprocess_output_path: "data/METRLA/METRLA_Preprocessed.pickle"
+  distance_threshold: 0.5

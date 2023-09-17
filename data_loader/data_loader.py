@@ -24,6 +24,8 @@ class DataLoader:
         self.num_days_per_week = data_configs['num_days_per_week']
         self.rep_vectors = data_configs['rep_vectors']
 
+        self.distance_threshold = data_configs['distance_threshold']
+
         self.batch_size = data_configs['batch_size']
         self.enc_features = data_configs['enc_features']
         self.dec_seq_offset = data_configs['dec_seq_offset']
@@ -196,26 +198,28 @@ class DataLoader:
         return self.dataset
 
     def load_edge_data_file(self):
-        edge_weight_file = open(self.edge_weight_filename, 'rb')
-        adj_mx = pd.read_pickle(edge_weight_file)[2]
+        try:
+            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
 
-        dst_edges = []
-        src_edges = []
-        edge_attr = []
-        for row in range(adj_mx.shape[0]):
-            for col in range(adj_mx.shape[1]):
-                if adj_mx[row][col] != 0:
-                    dst_edges.append(col)
-                    src_edges.append(row)
-                    edge_attr.append([adj_mx[row][col]])
+            dst_edges = []
+            src_edges = []
+            edge_attr = []
+            for row in range(w.shape[0]):
+                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
+                # degrade test performance (Over-fitting).
+                if float(w[row][2]) > self.distance_threshold:
+                    continue
+                dst_edges.append(int(float(w[row][0])))
+                src_edges.append(int(float(w[row][1])))
+                edge_attr.append([float(w[row][2])])
 
-        edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling)
+            edge_index = [src_edges, dst_edges]
+            edge_attr = scale_weights(np.array(edge_attr), True, min_max=True)
 
-        self.edge_index = edge_index
-        self.edge_attr = edge_attr
+            return edge_index, edge_attr
 
-        return edge_index, edge_attr
+        except FileNotFoundError:
+            print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
 
     def load_semantic_edge_data_file(self):
         # semantic_file = open(self.semantic_adj_filename, 'rb')

@@ -19,6 +19,7 @@ def train(model: torch.nn.Module,
 
     model.train()
 
+    dataset = data_loader.dataset
     for batch in range(n_batch_train):
         train_x, train_x_time_idx, train_y, train_y_target = data_loader.load_batch(_type='train',
                                                                                     offset=offset,
@@ -39,8 +40,8 @@ def train(model: torch.nn.Module,
 
         mae_loss_val, rmse_loss_val, mape_loss_val = calculate_loss(y_pred=out,
                                                                     y=train_y_target,
-                                                                    _mean=data_loader.dataset.get_mean(),
-                                                                    _std=data_loader.dataset.get_std())
+                                                                    _mean=dataset.get_mean(),
+                                                                    _std=dataset.get_std())
         mae_train_loss += mae_loss_val
         rmse_train_loss += rmse_loss_val
         mape_train_loss += mape_loss_val
@@ -50,17 +51,17 @@ def train(model: torch.nn.Module,
         loss.backward()
         optimizer.step()
 
-        offset += data_loader.batch_size
+        offset += dataset.batch_size
 
         mae_tmp_loss = mae_train_loss / float(batch + 1)
         rmse_tmp_loss = rmse_train_loss / float(batch + 1)
         mape_tmp_loss = mape_train_loss / float(batch + 1)
 
-        out_txt = f"all_batch: {data_loader.n_batch_train} | batch: {batch} | mae_tmp_loss: {mae_tmp_loss} | rmse_tmp_loss: {rmse_tmp_loss} | mape_tmp_loss: {mape_tmp_loss}"
+        out_txt = f"all_batch: {dataset.n_batch_train} | batch: {batch} | mae_tmp_loss: {mae_tmp_loss} | rmse_tmp_loss: {rmse_tmp_loss} | mape_tmp_loss: {mape_tmp_loss}"
         if offset % 500 == 0:
             logger.info(out_txt)
 
-    mae_train_loss = mae_train_loss / float(data_loader.n_batch_train)
-    rmse_train_loss = rmse_train_loss / float(data_loader.n_batch_train)
-    mape_train_loss = mape_train_loss / float(data_loader.n_batch_train)
+    mae_train_loss = mae_train_loss / float(n_batch_train)
+    rmse_train_loss = rmse_train_loss / float(n_batch_train)
+    mape_train_loss = mape_train_loss / float(n_batch_train)
     return mae_train_loss, rmse_train_loss, mape_train_loss
