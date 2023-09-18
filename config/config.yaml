@@ -3,8 +3,8 @@ model:
   batch_size: 16
   epochs: 120
   model_output_path: "output/model/metrla/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "output/model/metrla/multi-cross-attn/epoch_v1_13_model.pt"
-  load_saved_model: False
+  model_input_path: "output/model/metrla/multi-cross-attn/epoch_v1_3_model.pt"
+  load_saved_model: True
   device: cuda
   transformer:
     encoder:
