@@ -6,7 +6,7 @@ import torch
 
 from utils.data_utils import scale_weights, attach_prev_dys_seq, seq_gen_v2, derive_rep_timeline
 from data_loader.dataset import Dataset
-from utils.math_utils import z_score_normalize
+from utils.math_utils import z_score_normalize, min_max_normalize
 
 
 class DataLoader:
@@ -98,58 +98,12 @@ class DataLoader:
             self.dataset = pickle.load(preprocessed_file)
             return
 
-        data_seq = pd.read_csv(self.node_data_filename).values
-        data_seq = data_seq[:, 1:]
-        data_seq = np.expand_dims(data_seq, axis=-1)
-
-        new_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
-        for idx in range(data_seq.shape[0]):
-            time_idx = np.array(idx % self.points_per_week)
-            new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=-1)
-            new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
-
-        n_records = len(new_seq)
-        self.n_train = int(n_records * 0.7)
-        self.n_test = int(n_records * 0.2)
-        self.n_val = int(n_records * 0.1)
-
-        seq_train = seq_gen_v2(self.n_train, new_seq[:self.n_train], self.n_seq, self.num_of_vertices, 2)
-        seq_val = seq_gen_v2(self.n_val, new_seq[self.n_train:self.n_train + self.n_val], self.n_seq,
-                             self.num_of_vertices, 2)
-        seq_test = seq_gen_v2(self.n_test, new_seq[-1 * self.n_test:], self.n_seq, self.num_of_vertices, 2)
-
-        # attach last day and last week time series with last hour data
-        # Warning: we attached weekly index along with the speed value in the prev step.
-        # So, picking right index is important from now on. new_seq_all -> (8354, 12, 228, 1) -> (8354, 12, 228, 2)
-        # In the following step we attach one or two values pertaining to last day and last week speed values
-        total_drop = 0
-        if self.last_day:
-            total_drop = self.day_slot * 1
-        elif self.last_week:
-            total_drop = self.day_slot * self.num_days_per_week
-        training_x_set = attach_prev_dys_seq(seq_train, self.len_input, self.day_slot, self.num_days_per_week,
-                                             self.last_week, self.last_day, total_drop)
-        validation_x_set = attach_prev_dys_seq(seq_val, self.len_input, self.day_slot, self.num_days_per_week,
-                                               self.last_week, self.last_day, total_drop)
-        testing_x_set = attach_prev_dys_seq(seq_test, self.len_input, self.day_slot, self.num_days_per_week,
-                                            self.last_week, self.last_day, total_drop)
-
-        # Derive global representation vector for each sensor for similar time steps
-        records_time_idx = None
-        if self.rep_vectors:
-            records_time_idx = derive_rep_timeline(training_x_set,
-                                                   self.day_slot * self.num_days_per_week,
-                                                   self.num_of_vertices)
-
-        # When we consider last day or last week data, we have to drop a certain amount data in training
-        # y dataset as done in training x dataset.
-        training_y_set = seq_train[total_drop:, self.len_input:]
-        validation_y_set = seq_val[total_drop:, self.len_input:]
-        testing_y_set = seq_test[total_drop:, self.len_input:]
-
-        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
+        train_data = np.load('data/METRLA/train.npz')
+        test_data = np.load('data/METRLA/test.npz')
+        val_data = np.load('data/METRLA/val.npz')
+        new_train_x_set, training_y_set = train_data['x'], train_data['y']
+        new_test_x_set, testing_y_set = test_data['x'], test_data['y']
+        new_val_x_set, validation_y_set = val_data['x'], val_data['y']
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
@@ -160,13 +114,8 @@ class DataLoader:
             (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
 
         # z-score normalization on input and target values
-        stats_x, x_train, x_val, x_test = z_score_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
-        stats_y, y_train, y_val, y_test = z_score_normalize(training_y_set, validation_y_set, testing_y_set)
-
-        # concat time idx
-        x_train = np.concatenate((x_train, train_time_idx), axis=-1)
-        x_val = np.concatenate((x_val, val_time_idx), axis=-1)
-        x_test = np.concatenate((x_test, test_time_idx), axis=-1)
+        stats_x, x_train, x_val, x_test = min_max_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
+        stats_y, y_train, y_val, y_test = min_max_normalize(training_y_set, validation_y_set, testing_y_set)
 
         # shuffling training data 0th axis
         idx_samples = np.arange(0, x_train.shape[0])
@@ -246,8 +195,8 @@ class DataLoader:
         ys = self.dataset.get_y(_type)
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        enc_xs_time_idx = xs[offset: limit, :, :, -1:]
-        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1] # Avoid selecting time idx
+        enc_xs_time_idx = None
+        xs = xs[offset: limit, :, :, :]  # [9358, 13, 228, 1] # Avoid selecting time idx
         ys = ys[offset: limit, :]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
@@ -256,25 +205,7 @@ class DataLoader:
             ys_input[:, self.dec_seq_offset:, :, :] = 0
 
         num_inner_f_enc = int(xs.shape[-1] / self.enc_features)
-        enc_xs = []
-        for k in range(self.enc_features):
-            batched_xs = [[] for i in range(self.batch_size)]
-
-            for idx, x_timesteps in enumerate(xs):
-                seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
-                for inner_f in range(num_inner_f_enc):
-                    start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
-                    end_idx = start_idx + 1
-
-                    tmp_xs_start_idx = seq_len * inner_f
-                    tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = x_timesteps[:, :, start_idx: end_idx]
-
-                batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
-
-            batched_xs = torch.stack(batched_xs)
-            enc_xs.append(batched_xs)
+        enc_xs = [torch.Tensor(xs).to(device)]
 
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data

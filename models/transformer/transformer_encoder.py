@@ -120,10 +120,11 @@ class TransformerEncoder(nn.Module):
         if enc_idx == 0:
             graph_x = out_e
 
-            graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
-            graph_x = graph_x.permute(0, 2, 1, 3)
-            graph_x_shp = graph_x.shape
-            out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
+            if self.graph_input or self.graph_semantic_input:
+                graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
+                graph_x = graph_x.permute(0, 2, 1, 3)
+                graph_x_shp = graph_x.shape
+                out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
 
             if self.graph_input:
                 batch_size, time_steps, num_nodes, features = graph_x_shp
@@ -140,7 +141,7 @@ class TransformerEncoder(nn.Module):
             elif not self.graph_input and self.graph_semantic_input:
                 out_g = out_g_semantic
             elif not self.graph_input and not self.graph_semantic_input:
-                out_e = self.dropout_e(self.out_e_lin(out_e))
+                out_e = self.dropout_e(out_e)
                 return out_e
 
             out = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g)

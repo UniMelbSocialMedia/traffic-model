@@ -1,6 +1,6 @@
 # Model Configs
 model:
-  batch_size: 4
+  batch_size: 16
   epochs: 120
   model_output_path: "output/model/metrla/multi-cross-attn/epoch_v1_{}_model.pt"
   model_input_path: "output/model/metrla/multi-cross-attn/epoch_v1_13_model.pt"
@@ -9,21 +9,21 @@ model:
   transformer:
     encoder:
       features: 1 # To indicates multiple encoders (feature-wise). default is 1
-      emb_dim: 16
+      emb_dim: 64
       seq_len: 12
-      input_dim: 1
+      input_dim: 9
       merge_emb: False # Indicate whether the graph embeddings merge with non-graph embedding.
       emb_expansion_factor: 3 # If embeddings are merged, it will expand the dimension. the factor depends on whether we use graph, semantinc graph and raw sensor data.
       n_layers: 4
       local_trends: True
       graph_semantic_input: False
-      graph_input: True
+      graph_input: False
       dropout_e: 0.0
       encoder_block:
-        n_heads: 8
+        n_heads: 2
         expansion_factor: 4
-        src_dropout: 0.4
-        ff_dropout: 0.4
+        src_dropout: 0.2
+        ff_dropout: 0.2
       sgat:
         first_in_f_size: 192
         n_layers: 1
@@ -45,15 +45,15 @@ model:
       out_start_idx: 0 # When set decoder offset, this indicates the start index of the decoder output to calculate loss
       out_end_idx: -1 # When set decoder offset, this indicates the end index of the decoder output to calculate loss
       per_enc_feature_len: 12 # used in decoder cross attention (feature-wise cross attention). This should be tuned along with cross_attn_features
-      local_trends: True
+      local_trends: False
       graph_semantic_input: False
       graph_input: False
       decoder_block:
-        n_heads: 8
+        n_heads: 2
         expansion_factor: 4
         cross_attn_features: 1 # Used to indicates how many feature-wise cross attentions in the decoder
-        src_dropout: 0.3
-        cross_attn_dropout: 0.3
+        src_dropout: 0.6
+        cross_attn_dropout: 0.2
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208

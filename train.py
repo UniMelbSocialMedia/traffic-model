@@ -40,8 +40,8 @@ def train(model: torch.nn.Module,
 
         mae_loss_val, rmse_loss_val, mape_loss_val = calculate_loss(y_pred=out,
                                                                     y=train_y_target,
-                                                                    _mean=dataset.get_mean(),
-                                                                    _std=dataset.get_std())
+                                                                    _min=dataset.get_min(),
+                                                                    _max=dataset.get_max())
         mae_train_loss += mae_loss_val
         rmse_train_loss += rmse_loss_val
         mape_train_loss += mape_loss_val

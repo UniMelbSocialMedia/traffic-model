@@ -18,9 +18,10 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
 
     # mse_loss_fn = nn.L1Loss()
     mse_loss_fn = Masked_MAE_Loss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1,
-                                                                        eta_min=0.00005)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0005, weight_decay=0.001)
+    # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=1,
+    #                                                                     eta_min=0.00005)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer=optimizer, gamma=0.5)
     # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
     optimizer.zero_grad()
 
