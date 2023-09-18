@@ -196,7 +196,7 @@ class DataLoader:
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
         enc_xs_time_idx = None
-        xs = xs[offset: limit, :, :, :]  # [9358, 13, 228, 1] # Avoid selecting time idx
+        xs = xs[offset: limit, :, :, :1]  # [9358, 13, 228, 1] # Avoid selecting time idx
         ys = ys[offset: limit, :]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
