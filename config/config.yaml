@@ -20,10 +20,10 @@ model:
       graph_input: False
       dropout_e: 0.0
       encoder_block:
-        n_heads: 2
+        n_heads: 4
         expansion_factor: 4
-        src_dropout: 0.2
-        ff_dropout: 0.2
+        src_dropout: 0.3
+        ff_dropout: 0.3
       sgat:
         first_in_f_size: 192
         n_layers: 1
@@ -49,11 +49,11 @@ model:
       graph_semantic_input: False
       graph_input: False
       decoder_block:
-        n_heads: 2
+        n_heads: 4
         expansion_factor: 4
         cross_attn_features: 1 # Used to indicates how many feature-wise cross attentions in the decoder
-        src_dropout: 0.6
-        cross_attn_dropout: 0.2
+        src_dropout: 0.3
+        cross_attn_dropout: 0.3
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208
