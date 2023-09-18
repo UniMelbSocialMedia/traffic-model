@@ -37,7 +37,7 @@ class SGATTransformer(nn.Module):
 
     def _create_mask(self, batch_size, device):
         trg_mask = torch.triu(torch.ones((self.dec_seq_len, self.dec_seq_len)))\
-            .fill_diagonal_(0).bool().expand(batch_size * 2, self.dec_seq_len, self.dec_seq_len)
+            .fill_diagonal_(0).bool().expand(batch_size * 4, self.dec_seq_len, self.dec_seq_len)
         return trg_mask.to(device)
 
     def _create_enc_out(self, x):
