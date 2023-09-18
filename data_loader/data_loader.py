@@ -199,28 +199,48 @@ class DataLoader:
         return self.dataset
 
     def load_edge_data_file(self):
-        try:
-            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+        edge_weight_file = open(self.edge_weight_filename, 'rb')
+        adj_mx = pd.read_pickle(edge_weight_file)
 
-            dst_edges = []
-            src_edges = []
-            edge_attr = []
-            for row in range(w.shape[0]):
-                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
-                # degrade test performance (Over-fitting).
-                if float(w[row][2]) > self.distance_threshold:
-                    continue
-                dst_edges.append(int(float(w[row][0])))
-                src_edges.append(int(float(w[row][1])))
-                edge_attr.append([float(w[row][2])])
+        dst_edges = []
+        src_edges = []
+        edge_attr = []
+        for row in range(adj_mx.shape[0]):
+            for col in range(adj_mx.shape[1]):
+                if adj_mx[row][col] != 0  and adj_mx[row][col] < 4:
+                    dst_edges.append(col)
+                    src_edges.append(row)
+                    edge_attr.append([adj_mx[row][col]])
 
-            edge_index = [src_edges, dst_edges]
-            edge_attr = scale_weights(np.array(edge_attr), True, min_max=True)
+        edge_index = [src_edges, dst_edges]
+        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling)
 
-            return edge_index, edge_attr
+        self.edge_index = edge_index
+        self.edge_attr = edge_attr
 
-        except FileNotFoundError:
-            print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
+        return edge_index, edge_attr
+        # try:
+        #     w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+        #
+        #     dst_edges = []
+        #     src_edges = []
+        #     edge_attr = []
+        #     for row in range(w.shape[0]):
+        #         # Drop edges with large distance between vertices. This adds incorrect attention in training time and
+        #         # degrade test performance (Over-fitting).
+        #         if float(w[row][2]) > self.distance_threshold:
+        #             continue
+        #         dst_edges.append(int(float(w[row][0])))
+        #         src_edges.append(int(float(w[row][1])))
+        #         edge_attr.append([float(w[row][2])])
+        #
+        #     edge_index = [src_edges, dst_edges]
+        #     edge_attr = scale_weights(np.array(edge_attr), True, min_max=True)
+        #
+        #     return edge_index, edge_attr
+        #
+        # except FileNotFoundError:
+        #     print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')

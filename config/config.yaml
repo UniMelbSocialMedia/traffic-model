@@ -68,7 +68,7 @@ model:
 
 # Data Configs
 data:
-  edge_weight_filename: "data/METRLA/METRLA_dij.csv"
+  edge_weight_filename: "data/METRLA/adj_dis.pkl"
   edge_weight_original_filename: "data/METRLA/adj_METR-LA.pkl"
   semantic_adj_filename: "data/METRLA/METRLA_time_idx_semantic_edges.pickle"
   edge_weight_scaling: True
