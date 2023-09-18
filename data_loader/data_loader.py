@@ -25,6 +25,7 @@ class DataLoader:
         self.rep_vectors = data_configs['rep_vectors']
 
         self.distance_threshold = data_configs['distance_threshold']
+        self.semantic_threshold = data_configs['semantic_threshold']
 
         self.batch_size = data_configs['batch_size']
         self.enc_features = data_configs['enc_features']
@@ -222,24 +223,17 @@ class DataLoader:
             print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
 
     def load_semantic_edge_data_file(self):
-        # semantic_file = open(self.semantic_adj_filename, 'rb')
-        # sensor_details = pickle.load(semantic_file)
+        semantic_file = open(self.semantic_adj_filename, 'rb')
+        semantic_edge_details = pickle.load(semantic_file)
 
-        dst_edges = []
-        src_edges = []
-        edge_attr = []
-        # for i, (sensor, neighbours) in enumerate(sensor_details.items()):
-        #     for j, (neighbour, distance) in enumerate(neighbours.items()):
-        #         if j > 2:
-        #             break
-        #         dst_edges.append(sensor)
-        #         src_edges.append(neighbour)
-        #         edge_attr.append([distance])
-        #
-        edge_index = [src_edges, dst_edges]
-        # edge_attr = scale_weights(edge_attr, self.edge_weight_scaling, min_max=True)
+        edge_index = np.array(semantic_edge_details[0])
+        edge_attr = np.array(semantic_edge_details[1])
 
-        return edge_index, edge_attr
+        edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threshold].reshape(2, -1)
+        edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
+        edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threshold].reshape(-1, 1)
+
+        return [edge_index, edge_attr]
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
         xs = self.dataset.get_data(_type)
