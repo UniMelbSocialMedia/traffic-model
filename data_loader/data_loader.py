@@ -213,7 +213,7 @@ class DataLoader:
                     edge_attr.append([adj_mx[row][col]])
 
         edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(edge_attr, self.edge_weight_scaling)
+        edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
 
         self.edge_index = edge_index
         self.edge_attr = edge_attr
@@ -253,6 +253,7 @@ class DataLoader:
         edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
         edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threshold].reshape(-1, 1)
 
+        edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
         return [edge_index, edge_attr]
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
