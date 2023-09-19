@@ -54,6 +54,27 @@ class DataLoader:
         if self.last_week:
             self.num_f += 1
 
+    def replace_noise_records(self, seq_x: np.array):
+        output_file = open('data/METRLA/METRLA_rep_vector.csv', 'rb')
+        records_time_idx = pickle.load(output_file)
+
+        noise_rec = 0
+        noise_sensors = []
+        new_seq_x = np.zeros_like(seq_x)
+        for i, (rec_x) in enumerate(seq_x):
+            rep_key_x = rec_x[0, 0, 1]
+            rep_vecs = records_time_idx[rep_key_x]
+            for sensor in range(self.num_of_vertices):
+                sensor_rec_x = rec_x[:, sensor]
+                noise_data_x = (sensor_rec_x[:, 0:1] < 1).sum()
+                new_seq_x[i, :, sensor] = sensor_rec_x
+                if noise_data_x >= 10:
+                    new_seq_x[i, :, sensor, 0:1] = rep_vecs[:, sensor]
+                    noise_sensors.append(sensor)
+                    noise_rec += 1
+
+        return new_seq_x
+
     def _generate_new_x_arr(self, x_set: np.array, records_time_idx: dict):
         # WARNING: This has be changed accordingly.
         speed_idx = 0
@@ -137,6 +158,11 @@ class DataLoader:
         seq_val = seq_gen_v2(self.n_val, new_seq[self.n_train:self.n_train + self.n_val], self.n_seq,
                              self.num_of_vertices, 2)
         seq_test = seq_gen_v2(self.n_test, new_seq[-1 * self.n_test:], self.n_seq, self.num_of_vertices, 2)
+
+        seq_train_x = self.replace_noise_records(seq_train[:, :self.len_input])
+        seq_train_y = self.replace_noise_records(seq_train[:, self.len_input:])
+
+        seq_train = np.concatenate((seq_train_x, seq_train_y), axis=1)
 
         # attach last day and last week time series with last hour data
         # Warning: we attached weekly index along with the speed value in the prev step.
