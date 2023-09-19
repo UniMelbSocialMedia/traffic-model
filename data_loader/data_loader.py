@@ -48,14 +48,20 @@ class DataLoader:
         self.n_seq = self.len_input * 2
         self.points_per_week = self.points_per_hour * 24 * self.num_days_per_week
 
+        self.num_f = 1
+        if self.last_day:
+            self.num_f += 1
+        if self.last_week:
+            self.num_f += 1
+
     def _generate_new_x_arr(self, x_set: np.array, records_time_idx: dict):
         # WARNING: This has be changed accordingly.
         speed_idx = 0
         last_dy_idx = 2
-        last_wk_idx = 3
+        last_wk_idx = 4
 
         # Attach rep vectors for last day and last week data and drop weekly time index value
-        new_n_f = x_set.shape[3] - 1
+        new_n_f = x_set.shape[3] - 3
         # To add rep last hour seq
         if self.rep_vectors:
             new_n_f += 1
@@ -67,19 +73,31 @@ class DataLoader:
             new_n_f += 1
 
         new_x_set = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
+        new_time_idx = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
+        valid_n = 0
+        total = 0
         for i, x in enumerate(x_set):
             # WARNING: had to determine which index represent weekly time idx
             record_key = x[0, 0, 1]
             record_key_yesterday = record_key - 24 * self.points_per_hour
             if record_key_yesterday < 0: record_key_yesterday = record_key + self.points_per_week - 24 * self.points_per_hour
 
-            tmp = x[:, :, speed_idx:speed_idx + 1]
+            speed = x[:, :, speed_idx:speed_idx + 1]
+            if np.sum(speed) <= 100:
+                total += 1
+                continue
+            tmp = speed
+            tmp_idx = x[:, :, speed_idx + 1:speed_idx + 2]
             if self.last_day:
                 last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 1]
+                last_dy_tdx = x[:, :, last_dy_idx + 1:last_dy_idx + 2]
                 tmp = np.concatenate((tmp, last_dy_data), axis=-1)
+                tmp_idx = np.concatenate((tmp_idx, last_dy_tdx), axis=-1)
             if self.last_week:
                 last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 1]
+                last_wk_tdx = x[:, :, last_wk_idx + 1:last_wk_idx + 2]
                 tmp = np.concatenate((tmp, last_wk_data), axis=-1)
+                tmp_idx = np.concatenate((tmp_idx, last_wk_tdx), axis=-1)
             if self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
             if self.last_day and self.rep_vectors:
@@ -87,10 +105,11 @@ class DataLoader:
             if self.last_week and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
 
-            new_x_set[i] = tmp
+            new_x_set[valid_n] = tmp
+            new_time_idx[valid_n] = tmp_idx
+            valid_n += 1
 
-        time_idx = x_set[:, :, :, 1:2]
-        return new_x_set, time_idx
+        return new_x_set, new_time_idx
 
     # generate training, validation and test data
     def load_node_data_file(self):
@@ -148,42 +167,50 @@ class DataLoader:
         validation_y_set = seq_val[total_drop:, self.len_input:]
         testing_y_set = seq_test[total_drop:, self.len_input:]
 
-        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
-
         # Add tailing target values form x values to facilitate local trend attention in decoder
-        training_y_set = np.concatenate(
-            (new_train_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 0:1]), axis=1)
-        validation_y_set = np.concatenate(
-            (new_val_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 0:1]), axis=1)
-        testing_y_set = np.concatenate(
-            (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
+        new_training_y_set = np.concatenate(
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], training_y_set[:, :, :, 0:2]), axis=1)
+        new_validation_y_set = np.concatenate(
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], validation_y_set[:, :, :, 0:2]), axis=1)
+        new_testing_y_set = np.concatenate(
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], testing_y_set[:, :, :, 0:2]), axis=1)
+
+        # training_yt_set = np.concatenate(
+        #     (train_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 1:2]), axis=1)
+        # validation_yt_set = np.concatenate(
+        #     (val_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 1:2]), axis=1)
+        # testing_yt_set = np.concatenate(
+        #     (test_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 1:2]), axis=1)
+
+        # time idx
+        xt_train, xt_val, xt_test = np.take(training_x_set, [1, 3, 5], axis=-1), np.take(validation_x_set, [1, 3, 5], axis=-1), np.take(testing_x_set, [1, 3, 5], axis=-1)
+        yt_train, yt_val, yt_test = np.take(new_training_y_set, [1], axis=-1), np.take(new_validation_y_set, [1], axis=-1), np.take(new_testing_y_set, [1], axis=-1)
 
         # z-score normalization on input and target values
-        stats_x, x_train, x_val, x_test = z_score_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
-        stats_y, y_train, y_val, y_test = z_score_normalize(training_y_set, validation_y_set, testing_y_set)
-
-        # concat time idx
-        x_train = np.concatenate((x_train, train_time_idx), axis=-1)
-        x_val = np.concatenate((x_val, val_time_idx), axis=-1)
-        x_test = np.concatenate((x_test, test_time_idx), axis=-1)
+        stats_x, x_train, x_val, x_test = z_score_normalize(training_x_set, validation_x_set, testing_x_set)
+        stats_y, y_train, y_val, y_test = z_score_normalize(new_training_y_set, new_validation_y_set, new_testing_y_set)
 
         # shuffling training data 0th axis
         idx_samples = np.arange(0, x_train.shape[0])
         np.random.shuffle(idx_samples)
         x_train = x_train[idx_samples]
         y_train = y_train[idx_samples]
+        xt_train = xt_train[idx_samples]
+        yt_train = yt_train[idx_samples]
 
         self.n_batch_train = int(len(x_train) / self.batch_size)
         self.n_batch_test = int(len(x_test) / self.batch_size)
         self.n_batch_val = int(len(x_val) / self.batch_size)
 
         data = {'train': x_train, 'val': x_val, 'test': x_test}
-        y = {'train': y_train[:, :, :, 0:1], 'val': y_val[:, :, :, 0:1], 'test': y_test[:, :, :, 0:1]}
+        datat = {'train': xt_train, 'val': xt_val, 'test': xt_test}
+        y = {'train': y_train, 'val': y_val, 'test': y_test}
+        yt = {'train': yt_train, 'val': yt_val, 'test': yt_test}
         self.dataset = Dataset(
             data=data,
+            datat=datat,
             y=y,
+            yt=yt,
             stats_x=stats_x,
             stats_y=stats_y,
             n_batch_train=self.n_batch_train,
@@ -258,45 +285,64 @@ class DataLoader:
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
         xs = self.dataset.get_data(_type)
+        xts = self.dataset.get_datat(_type)
         ys = self.dataset.get_y(_type)
+        yts = self.dataset.get_yt(_type)
+
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        enc_xs_time_idx = xs[offset: limit, :, :, -1:]
-        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1] # Avoid selecting time idx
-        ys = ys[offset: limit, :]
+        xs = xs[offset: limit]
+        xts = xts[offset: limit]
+        ys = ys[offset: limit]
+        yts = yts[offset: limit]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
         ys_input = np.copy(ys)
+        ys = ys[:, :, :, 0:1]
         if _type != 'train':
-            ys_input[:, self.dec_seq_offset:, :, :] = 0
+            ys_input[:, self.dec_seq_offset:, :, 0:1] = 0
 
-        num_inner_f_enc = int(xs.shape[-1] / self.enc_features)
+        # reshaping
+        xs_shp = xs.shape
+        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 2))
+
+        num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
         enc_xs = []
+        enc_xst = []
         for k in range(self.enc_features):
             batched_xs = [[] for i in range(self.batch_size)]
+            batched_xst = [[] for i in range(self.batch_size)]
 
-            for idx, x_timesteps in enumerate(xs):
+            for idx, (x_timesteps, xt_timesteps) in enumerate(zip(xs, xts)):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
+                tmp_xst = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
                 for inner_f in range(num_inner_f_enc):
                     start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
                     end_idx = start_idx + 1
 
                     tmp_xs_start_idx = seq_len * inner_f
                     tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = x_timesteps[:, :, start_idx: end_idx]
+                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
+                    tmp_xst[tmp_xs_start_idx: tmp_xs_end_idx] = xt_timesteps[:, :, start_idx: end_idx]
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
+                batched_xst[idx] = tmp_xst
 
             batched_xs = torch.stack(batched_xs)
+            batched_xst = np.array(batched_xst)
             enc_xs.append(batched_xs)
+            enc_xst.append(batched_xst)
 
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
+        dec_yst = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data
-        for idx, y_timesteps in enumerate(ys_input):
+        for idx, (y_timesteps, yt_timesteps) in enumerate(zip(ys_input, yts)):
             dec_ys[idx] = torch.Tensor(y_timesteps).to(device)
+            dec_yst[idx] = yt_timesteps
             dec_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
 
         dec_ys = torch.stack(dec_ys)
+        dec_yst = np.array(dec_yst)
 
-        return enc_xs, enc_xs_time_idx, dec_ys, dec_ys_target
+        return enc_xs, enc_xst, dec_ys, dec_yst, dec_ys_target

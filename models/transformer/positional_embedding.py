@@ -22,8 +22,15 @@ class PositionalEmbedding(nn.Module):
         # make embeddings relatively larger
         x = x * math.sqrt(self.embed_dim)
 
-        if lookup_idx:
-            x = x + torch.autograd.Variable(self.pe[:, lookup_idx], requires_grad=False)
+        if lookup_idx is not None:
+            b = lookup_idx.shape[0]
+            lookup_idx = lookup_idx[:, :, 0, 0].astype(int)
+            for i in range(b):
+                start = i * 207
+                end = i * 207 + 207
+                lookup_idx_i = list(lookup_idx[i])
+                x[start: end] = x[start: end] + torch.autograd.Variable(self.pe[:, lookup_idx_i], requires_grad=False)
+            # x = x + torch.autograd.Variable(self.pe[:, lookup_idx], requires_grad=False)
         else:
             # add constant to embedding
             seq_len = x.size(1)

@@ -1,7 +1,9 @@
 class Dataset(object):
-    def __init__(self, data, y, stats_x, stats_y, n_batch_train, n_batch_test, n_batch_val, batch_size):
+    def __init__(self, data, datat, y, yt, stats_x, stats_y, n_batch_train, n_batch_test, n_batch_val, batch_size):
         self.__data = data
+        self.__datat = datat
         self.__y = y
+        self.__yt = yt
         self.stats_x = stats_x  # This is not required. Just for making graphs in test scripts
         self._mean = stats_y['_mean']
         self._std = stats_y['_std']
@@ -13,8 +15,14 @@ class Dataset(object):
     def get_data(self, _type):
         return self.__data[_type]
 
+    def get_datat(self, _type):
+        return self.__datat[_type]
+
     def get_y(self, _type):
         return self.__y[_type]
+
+    def get_yt(self, _type):
+        return self.__yt[_type]
 
     def get_mean(self):
         return self._mean

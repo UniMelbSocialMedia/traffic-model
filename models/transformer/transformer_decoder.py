@@ -106,12 +106,12 @@ class TransformerDecoder(nn.Module):
 
         return out
 
-    def forward(self, x, enc_x, tgt_mask, device):
+    def forward(self, x, xt, enc_x, tgt_mask, device):
         embed_out = self.embedding(x)
         embed_shp = embed_out.shape
         embed_out = self._organize_matrix(embed_out)
 
-        out_d = self.position_embedding(embed_out, self.lookup_idx)  # 32x10x512
+        out_d = self.position_embedding(embed_out, xt)  # 32x10x512
 
         tgt_mask_conv = self.create_conv_mask(out_d, device)
 

@@ -65,8 +65,8 @@ def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_
 
     seq_output = []
     for k in range(len(seq_tmp)):
-        lst_dy_data = seq[total_drop + k - day_slots][:n_his, :, 0:1]
-        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][:n_his, :, 0:1]
+        lst_dy_data = seq[total_drop + k - day_slots][:n_his]
+        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][:n_his]
 
         tmp = seq_tmp[k][:n_his]
         if last_day:

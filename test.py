@@ -25,11 +25,11 @@ def test(_type: str,
     dataset = data_loader.dataset
     with torch.inference_mode():
         for batch in range(n_batch):
-            test_x, test_x_time_idx, test_y, test_y_target = data_loader.load_batch(_type=_type,
-                                                                                    offset=offset,
-                                                                                    device=device)
+            test_x, test_xt, test_y, test_yt, test_y_target = data_loader.load_batch(_type=_type,
+                                                                                     offset=offset,
+                                                                                     device=device)
 
-            out = model(test_x, test_x_time_idx, test_y, False)
+            out = model(test_x, test_xt, test_y, test_yt, False)
             out = out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1)
 
             test_y_tensor = ()

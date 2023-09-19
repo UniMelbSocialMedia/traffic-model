@@ -19,7 +19,6 @@ class GAT(nn.Module):
         first_in_f_size = configs['first_in_f_size']
         alpha = configs['alpha']
         edge_dim = configs['edge_dim']
-        num_edges = configs['num_edges']
         seq_len = configs['seq_len']
 
         self.layer_stack = nn.ModuleList()

@@ -36,7 +36,6 @@ class TransformerEncoder(nn.Module):
         # embedding
         self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
         configs['sgat']['seq_len'] = self.seq_len
-        configs['sgat']['num_edges'] = 4993
         self.graph_embedding = SGATEmbedding(configs['sgat'])
         self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
         self.bipart_lin = nn.Linear(self.emb_dim, self.seq_len * self.emb_dim)
@@ -74,7 +73,7 @@ class TransformerEncoder(nn.Module):
                           edge_attr=Tensor(edge_attr))
         return graph
 
-    def _derive_graphs(self, x_batch, x_time_idx):
+    def _derive_graphs(self, x_batch):
         to = ToDevice(self.device)
 
         x_batch_graphs = []
@@ -101,11 +100,11 @@ class TransformerEncoder(nn.Module):
         mat = mat.permute(1, 0, 2)  # (4 * 170, 36, 16)
         return mat
 
-    def forward(self, x, x_time_idx, enc_idx):
+    def forward(self, x, xt, enc_idx):
         embed_out = self.embedding(x)
         embed_out = self._organize_matrix(embed_out)
 
-        out_e = self.positional_encoder(embed_out, self.lookup_idx)
+        out_e = self.positional_encoder(embed_out, xt)
         for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
             if self.local_trends:
                 out_transposed = out_e.transpose(2, 1)
@@ -123,7 +122,7 @@ class TransformerEncoder(nn.Module):
             graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
             graph_x = graph_x.permute(0, 2, 1, 3)
             graph_x_shp = graph_x.shape
-            out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
+            out_g_dis, out_g_semantic = self._derive_graphs(graph_x)
 
             if self.graph_input:
                 batch_size, time_steps, num_nodes, features = graph_x_shp
