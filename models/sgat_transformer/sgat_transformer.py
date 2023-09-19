@@ -46,26 +46,27 @@ class SGATTransformer(nn.Module):
             .to(self.device)
         return enc_outs
 
-    def forward(self, x, time_idx, y=None, train=True):
+    def forward(self, x, xt, y=None, yt=None, train=True):
         enc_outs = self._create_enc_out(x)
         tgt_mask = self._create_mask(enc_outs.shape[1], self.device)
 
         for idx, encoder in enumerate(self.encoders):
             x_i = x[idx]
+            xt_i = xt[idx]
 
-            enc_out = encoder(x_i, time_idx, idx)
+            enc_out = encoder(x_i, xt_i, idx)
             enc_outs[idx] = enc_out
 
         if train:
-            dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
+            dec_out = self.decoder(y, yt, enc_outs, tgt_mask=tgt_mask, device=self.device)
             return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
         else:
             final_out = torch.zeros_like(y)
             dec_out_len = self.dec_seq_len - self.dec_seq_offset
             for i in range(dec_out_len):
 
-                dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
-                y[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
+                dec_out = self.decoder(y, yt, enc_outs, tgt_mask=tgt_mask, device=self.device)
+                y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
                 final_out[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
 
             return final_out[:, self.dec_seq_offset:]

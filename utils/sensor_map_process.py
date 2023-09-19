@@ -3,6 +3,7 @@ import random
 import csv
 import numpy as np
 import geopy.distance
+import pickle
 
 
 def calculate_distance(lat1, lon1, lat2, lon2):
@@ -11,31 +12,17 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return distance
 
 
-def drop_edges(filename: str, filename_out: str, stations: list, avg: float):
-    try:
-        w = pd.read_csv(filename, header=None).values
+def drop_edges(filename_out: str, stations: list):
+    adj = []
+    for i, station in enumerate(stations):
+        adj.append(station.distances)
 
-        for row in range(w.shape[0]):
-            st = stations[row]
-            selected = []
-            for dis in st.distances:
-                if dis <= 1.5:
-                    selected.append(True)
-                else:
-                    selected.append(False)
+    adj = np.array(adj)
+    avg_dis = np.average(adj)
+    print(avg_dis)
 
-            for col, is_selected in enumerate(selected):
-                if not is_selected:
-                    w[row][col] = 0
-                    if col > row:
-                        w[col][row] = 0
-
-        with open(filename_out, "w+") as csv_file:
-            writer = csv.writer(csv_file, delimiter=',')
-            writer.writerows(w)
-
-    except FileNotFoundError:
-        print(f'ERROR: input file was not found in {filename}.')
+    with open(filename_out, 'wb') as file:
+        pickle.dump(adj, file)
 
 
 class Station:
@@ -53,11 +40,11 @@ def load_data_file(file: str):
 
 
 if __name__ == '__main__':
-    df = load_data_file('../data/PEMSD7/PeMSD7_M_Station_Info.csv')
+    df = load_data_file('../data/PEMS-BAY/PEMS-BAY-META.csv')
 
     stations = []
     for index, row in df.iterrows():
-        stations.append(Station(row['ID'], row['Longitude'], row['Latitude']))
+        stations.append(Station(row['sensor_id'], row['Longitude'], row['Latitude']))
 
     for st in stations:
         distances = []
@@ -75,7 +62,5 @@ if __name__ == '__main__':
 
     all_mean = all_mean / (len(stations) * 1.0)
 
-    drop_edges(filename='../data/PEMSD7/PeMSD7_W_228_original.csv',
-               filename_out='../data/PEMSD7/PeMSD7_W_228.csv',
-               stations=stations,
-               avg=all_mean)
+    drop_edges(filename_out='../data/PEMS-BAY/adj_dis.pkl',
+               stations=stations)

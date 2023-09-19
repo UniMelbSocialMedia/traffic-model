@@ -4,7 +4,7 @@ import pickle
 
 import torch
 
-from utils.data_utils import scale_weights, derive_rep_timeline, get_sample_indices
+from utils.data_utils import scale_weights, derive_rep_timeline, seq_gen_v2, attach_prev_dys_seq
 from data_loader.dataset import Dataset
 from utils.math_utils import z_score_normalize, min_max_normalize
 
@@ -19,15 +19,13 @@ class DataLoader:
         self.num_of_vertices = data_configs['num_of_vertices']
         self.points_per_hour = data_configs['points_per_hour']
         self.len_input = data_configs['len_input']
-        self.num_for_predict = data_configs['num_for_predict']
-        self.num_of_hours = data_configs['num_of_hours']
-        self.num_of_days = data_configs['num_of_days']
-        self.num_of_days = data_configs['num_of_days']
-        self.num_of_weeks = data_configs['num_of_weeks']
-        self.num_of_days_target = data_configs['num_of_days_target']
-        self.num_of_weeks_target = data_configs['num_of_weeks_target']
+        self.last_day = data_configs['last_day']
+        self.last_week = data_configs['last_week']
         self.num_days_per_week = data_configs['num_days_per_week']
         self.rep_vectors = data_configs['rep_vectors']
+
+        self.distance_threshold = data_configs['distance_threshold']
+        self.semantic_threshold = data_configs['semantic_threshold']
 
         self.batch_size = data_configs['batch_size']
         self.enc_features = data_configs['enc_features']
@@ -39,9 +37,8 @@ class DataLoader:
 
         self.edge_weight_filename = data_configs['edge_weight_filename']
         self.semantic_adj_filename = data_configs['semantic_adj_filename']
+        self.edge_weight_original_filename = data_configs['edge_weight_original_filename']
         self.edge_weight_scaling = data_configs['edge_weight_scaling']
-        self.distance_threshold = data_configs['distance_threshold']
-        self.semantic_threashold = data_configs['semantic_threashold']
 
         # PEMSD7 Specific Variables
         self.n_train = 34
@@ -50,6 +47,12 @@ class DataLoader:
         self.day_slot = self.points_per_hour * 24
         self.n_seq = self.len_input * 2
         self.points_per_week = self.points_per_hour * 24 * self.num_days_per_week
+
+        self.num_f = 1
+        if self.last_day:
+            self.num_f += 1
+        if self.last_week:
+            self.num_f += 1
 
     def _generate_new_x_arr(self, x_set: np.array, records_time_idx: dict):
         # WARNING: This has be changed accordingly.
@@ -102,119 +105,105 @@ class DataLoader:
             self.dataset = pickle.load(preprocessed_file)
             return
 
-        data_seq = np.load(self.node_data_filename)['data']  # (sequence_length, num_of_vertices, num_of_features)
+        data_seq = pd.read_csv(self.node_data_filename).values
+        data_seq = data_seq[:, 1:]
+        data_seq = np.expand_dims(data_seq, axis=-1)
 
-        all_samples = []
-        all_targets = []
-
-        new_data_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
-        points_per_week = self.points_per_hour * 24 * 7
-
+        new_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
         for idx in range(data_seq.shape[0]):
-            time_idx = np.array(idx % points_per_week)
-            new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=1)
-            new_data_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
+            time_idx = np.array(idx % self.points_per_week)
+            new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=-1)
+            new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
 
-        for idx in range(new_data_seq.shape[0]):
-            sample = get_sample_indices(data_seq, self.num_of_weeks,
-                                        self.num_of_days,
-                                        self.num_of_hours,
-                                        idx,
-                                        self.num_for_predict,
-                                        self.points_per_hour,
-                                        num_of_days_target=self.num_of_days_target,
-                                        num_of_weeks_target=self.num_of_weeks_target)
-            if (sample[0] is None) and (sample[1] is None) and (sample[2] is None):
-                continue
+        n_records = len(new_seq)
+        self.n_train = int(n_records * 0.7)
+        self.n_test = int(n_records * 0.2)
+        self.n_val = int(n_records * 0.1)
 
-            week_sample, day_sample, hour_sample, target, wk_dys, hrs, week_sample_target, day_sample_target = sample
+        seq_train = seq_gen_v2(self.n_train, new_seq[:self.n_train], self.n_seq, self.num_of_vertices, 2)
+        seq_val = seq_gen_v2(self.n_val, new_seq[self.n_train:self.n_train + self.n_val], self.n_seq,
+                             self.num_of_vertices, 2)
+        seq_test = seq_gen_v2(self.n_test, new_seq[-1 * self.n_test:], self.n_seq, self.num_of_vertices, 2)
 
-            time_idx_sample = np.repeat(np.expand_dims(new_data_seq[idx, :, -1:], axis=0), self.len_input, axis=0)
-
-            sample = None
-            # if self.num_of_days_target > 0:
-            #     sample = np.concatenate((sample, day_sample_target[:, :, 0:1]), axis=2)
-            if self.num_of_hours > 0:
-                # sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-                sample = hour_sample[:, :, 0:1]
-
-            if self.num_of_days > 0:
-                # sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-                sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-
-            if self.num_of_weeks > 0:
-                sample = np.concatenate((sample, week_sample[:, :, 0:1]), axis=2)
-
-            if self.num_of_weeks_target > 0:
-                sample = np.concatenate((sample, week_sample_target[:, :, 0:1]), axis=2)
-                ### hr and wk_dy indices are not used as features. So skipping attaching ###
-
-            # sample = np.concatenate((sample, hr_idx_sample, wk_dy_idx_sample, time_idx_sample), axis=2)
-            sample = np.concatenate((sample, time_idx_sample), axis=2)
-
-            # target = np.concatenate((target[:, :, 0:1], hr_idx_target, wk_dy_idx_target), axis=2)
-            all_samples.append(sample)
-            all_targets.append(target[:, :, 0:1])
-
-        split_line1 = int(len(all_samples) * 0.6)
-        split_line2 = int(len(all_samples) * 0.8)
-
-        training_x_set = np.array(all_samples[:split_line1])
-        validation_x_set = np.array(all_samples[split_line1: split_line2])
-        testing_x_set = np.array(all_samples[split_line2:])
-
-        training_y_set = np.array(all_targets[:split_line1])
-        validation_y_set = np.array(all_targets[split_line1: split_line2])
-        testing_y_set = np.array(all_targets[split_line2:])
+        # attach last day and last week time series with last hour data
+        # Warning: we attached weekly index along with the speed value in the prev step.
+        # So, picking right index is important from now on. new_seq_all -> (8354, 12, 228, 1) -> (8354, 12, 228, 2)
+        # In the following step we attach one or two values pertaining to last day and last week speed values
+        total_drop = 0
+        if self.last_day:
+            total_drop = self.day_slot * 1
+        elif self.last_week:
+            total_drop = self.day_slot * self.num_days_per_week
+        training_x_set = attach_prev_dys_seq(seq_train, self.len_input, self.day_slot, self.num_days_per_week,
+                                             self.last_week, self.last_day, total_drop)
+        validation_x_set = attach_prev_dys_seq(seq_val, self.len_input, self.day_slot, self.num_days_per_week,
+                                               self.last_week, self.last_day, total_drop)
+        testing_x_set = attach_prev_dys_seq(seq_test, self.len_input, self.day_slot, self.num_days_per_week,
+                                            self.last_week, self.last_day, total_drop)
 
         # Derive global representation vector for each sensor for similar time steps
         records_time_idx = None
         if self.rep_vectors:
-            records_time_idx = derive_rep_timeline(training_x_set, self.points_per_week, self.num_of_vertices)
+            records_time_idx = derive_rep_timeline(training_x_set,
+                                                   self.day_slot * self.num_days_per_week,
+                                                   self.num_of_vertices)
 
-        new_train_x_set, train_time_idx = self._generate_new_x_arr(training_x_set, records_time_idx)
-        new_val_x_set, val_time_idx = self._generate_new_x_arr(validation_x_set, records_time_idx)
-        new_test_x_set, test_time_idx = self._generate_new_x_arr(testing_x_set, records_time_idx)
+        # When we consider last day or last week data, we have to drop a certain amount data in training
+        # y dataset as done in training x dataset.
+        training_y_set = seq_train[total_drop:, self.len_input:]
+        validation_y_set = seq_val[total_drop:, self.len_input:]
+        testing_y_set = seq_test[total_drop:, self.len_input:]
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
-        training_y_set = np.concatenate(
-            (new_train_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, :]), axis=1)
-        validation_y_set = np.concatenate(
-            (new_val_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, :]), axis=1)
-        testing_y_set = np.concatenate(
-            (new_test_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, :]), axis=1)
+        new_training_y_set = np.concatenate(
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], training_y_set[:, :, :, 0:2]), axis=1)
+        new_validation_y_set = np.concatenate(
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], validation_y_set[:, :, :, 0:2]), axis=1)
+        new_testing_y_set = np.concatenate(
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], testing_y_set[:, :, :, 0:2]), axis=1)
 
-        # max-min normalization on input and target values
-        (stats_x, x_train, x_val, x_test) = min_max_normalize(new_train_x_set, new_val_x_set, new_test_x_set)
-        (stats_y, y_train, y_val, y_test) = min_max_normalize(training_y_set, validation_y_set, testing_y_set)
+        # training_yt_set = np.concatenate(
+        #     (train_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 1:2]), axis=1)
+        # validation_yt_set = np.concatenate(
+        #     (val_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 1:2]), axis=1)
+        # testing_yt_set = np.concatenate(
+        #     (test_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 1:2]), axis=1)
 
-        # concat time idx
-        x_train = np.concatenate((x_train, train_time_idx), axis=-1)
-        x_val = np.concatenate((x_val, val_time_idx), axis=-1)
-        x_test = np.concatenate((x_test, test_time_idx), axis=-1)
+        # time idx
+        xt_train, xt_val, xt_test = np.take(training_x_set, [1, 3, 5], axis=-1), np.take(validation_x_set, [1, 3, 5], axis=-1), np.take(testing_x_set, [1, 3, 5], axis=-1)
+        yt_train, yt_val, yt_test = np.take(new_training_y_set, [1], axis=-1), np.take(new_validation_y_set, [1], axis=-1), np.take(new_testing_y_set, [1], axis=-1)
+
+        # z-score normalization on input and target values
+        stats_x, x_train, x_val, x_test = z_score_normalize(training_x_set, validation_x_set, testing_x_set)
+        stats_y, y_train, y_val, y_test = z_score_normalize(new_training_y_set, new_validation_y_set, new_testing_y_set)
 
         # shuffling training data 0th axis
         idx_samples = np.arange(0, x_train.shape[0])
         np.random.shuffle(idx_samples)
         x_train = x_train[idx_samples]
         y_train = y_train[idx_samples]
+        xt_train = xt_train[idx_samples]
+        yt_train = yt_train[idx_samples]
 
         self.n_batch_train = int(len(x_train) / self.batch_size)
         self.n_batch_test = int(len(x_test) / self.batch_size)
         self.n_batch_val = int(len(x_val) / self.batch_size)
 
         data = {'train': x_train, 'val': x_val, 'test': x_test}
-        y = {'train': y_train[:, :, :, 0:1], 'val': y_val[:, :, :, 0:1], 'test': y_test[:, :, :, 0:1]}
-
+        datat = {'train': xt_train, 'val': xt_val, 'test': xt_test}
+        y = {'train': y_train, 'val': y_val, 'test': y_test}
+        yt = {'train': yt_train, 'val': yt_val, 'test': yt_test}
         self.dataset = Dataset(
             data=data,
+            datat=datat,
             y=y,
+            yt=yt,
             stats_x=stats_x,
             stats_y=stats_y,
             n_batch_train=self.n_batch_train,
             n_batch_test=self.n_batch_test,
             n_batch_val=self.n_batch_val,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         with open(self.preprocess_output_path, 'wb') as file:
@@ -224,83 +213,101 @@ class DataLoader:
         return self.dataset
 
     def load_edge_data_file(self):
-        try:
-            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+        edge_weight_file = open(self.edge_weight_filename, 'rb')
+        adj_mx = pd.read_pickle(edge_weight_file)
 
-            dst_edges = []
-            src_edges = []
-            edge_attr = []
-            for row in range(w.shape[0]):
-                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
-                # degrade test performance (Over-fitting).
-                if float(w[row][2]) > self.distance_threshold:
-                    continue
-                dst_edges.append(int(float(w[row][0])))
-                src_edges.append(int(float(w[row][1])))
-                edge_attr.append([float(w[row][2])])
+        dst_edges = []
+        src_edges = []
+        edge_attr = []
+        for row in range(adj_mx.shape[0]):
+            for col in range(adj_mx.shape[1]):
+                if adj_mx[row][col] != 0 and adj_mx[row][col] < self.distance_threshold:
+                    dst_edges.append(col)
+                    src_edges.append(row)
+                    edge_attr.append([adj_mx[row][col]])
 
-            edge_index = [src_edges, dst_edges]
-            edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
+        edge_index = [src_edges, dst_edges]
+        edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
 
-            return edge_index, edge_attr
+        self.edge_index = edge_index
+        self.edge_attr = edge_attr
 
-        except FileNotFoundError:
-            print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
+        return edge_index, edge_attr
 
     def load_semantic_edge_data_file(self):
-        semantic_file = open(self.semantic_adj_filename, 'rb')
-        semantic_edge_details = pickle.load(semantic_file)
-
-        edge_index = np.array(semantic_edge_details[0])
-        edge_attr = np.array(semantic_edge_details[1])
-
-        edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threashold].reshape(2, -1)
-        edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
-        edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threashold].reshape(-1, 1)
-
+        # semantic_file = open(self.semantic_adj_filename, 'rb')
+        # semantic_edge_details = pickle.load(semantic_file)
+        #
+        # edge_index = np.array(semantic_edge_details[0])
+        # edge_attr = np.array(semantic_edge_details[1])
+        #
+        # edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threshold].reshape(2, -1)
+        # edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
+        # edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threshold].reshape(-1, 1)
+        edge_index = []
+        edge_attr = []
         return [edge_index, edge_attr]
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
         xs = self.dataset.get_data(_type)
+        xts = self.dataset.get_datat(_type)
         ys = self.dataset.get_y(_type)
+        yts = self.dataset.get_yt(_type)
+
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
-        enc_xs_time_idx = xs[offset: limit, :, :, -1:]
-        xs = xs[offset: limit, :, :, :-1]  # [9358, 13, 228, 1] # Avoid selecting time idx
-        ys = ys[offset: limit, :]
+        xs = xs[offset: limit]
+        xts = xts[offset: limit]
+        ys = ys[offset: limit]
+        yts = yts[offset: limit]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
         ys_input = np.copy(ys)
+        ys = ys[:, :, :, 0:1]
         if _type != 'train':
-            ys_input[:, self.dec_seq_offset:, :, :] = 0
+            ys_input[:, self.dec_seq_offset:, :, 0:1] = 0
 
-        num_inner_f_enc = int(xs.shape[-1] / self.enc_features)
+        # reshaping
+        xs_shp = xs.shape
+        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 2))
+
+        num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
         enc_xs = []
+        enc_xst = []
         for k in range(self.enc_features):
             batched_xs = [[] for i in range(self.batch_size)]
+            batched_xst = [[] for i in range(self.batch_size)]
 
-            for idx, x_timesteps in enumerate(xs):
+            for idx, (x_timesteps, xt_timesteps) in enumerate(zip(xs, xts)):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
+                tmp_xst = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
                 for inner_f in range(num_inner_f_enc):
                     start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
                     end_idx = start_idx + 1
 
                     tmp_xs_start_idx = seq_len * inner_f
                     tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = x_timesteps[:, :, start_idx: end_idx]
+                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
+                    tmp_xst[tmp_xs_start_idx: tmp_xs_end_idx] = xt_timesteps[:, :, start_idx: end_idx]
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
+                batched_xst[idx] = tmp_xst
 
             batched_xs = torch.stack(batched_xs)
+            batched_xst = np.array(batched_xst)
             enc_xs.append(batched_xs)
+            enc_xst.append(batched_xst)
 
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
+        dec_yst = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data
-        for idx, y_timesteps in enumerate(ys_input):
+        for idx, (y_timesteps, yt_timesteps) in enumerate(zip(ys_input, yts)):
             dec_ys[idx] = torch.Tensor(y_timesteps).to(device)
+            dec_yst[idx] = yt_timesteps
             dec_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
 
         dec_ys = torch.stack(dec_ys)
+        dec_yst = np.array(dec_yst)
 
-        return enc_xs, enc_xs_time_idx, dec_ys, dec_ys_target
+        return enc_xs, enc_xst, dec_ys, dec_yst, dec_ys_target
