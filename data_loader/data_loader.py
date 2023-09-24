@@ -132,7 +132,7 @@ class DataLoader:
         total_drop = 0
         if self.last_day:
             total_drop = self.day_slot * 1
-        elif self.last_week:
+        if self.last_week:
             total_drop = self.day_slot * self.num_days_per_week
         training_x_set = attach_prev_dys_seq(seq_train, self.len_input, self.day_slot, self.num_days_per_week,
                                              self.last_week, self.last_day, total_drop)
