@@ -53,7 +53,7 @@ class SGATTransformer(nn.Module):
         for idx, encoder in enumerate(self.encoders):
             x_i = x[idx]
 
-            enc_out = encoder(x_i, time_idx, idx)
+            enc_out = encoder(x_i, idx)
             enc_outs[idx] = enc_out
 
         if train:

@@ -110,7 +110,7 @@ class TransformerEncoder(nn.Module):
         mat = mat.permute(1, 0, 2)  # (4 * 170, 36, 16)
         return mat
 
-    def forward(self, x, xt, enc_idx):
+    def forward(self, x, enc_idx):
         embed_out = self.embedding(x)
         embed_out = self._organize_matrix(embed_out)
 

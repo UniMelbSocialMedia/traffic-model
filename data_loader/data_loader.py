@@ -159,7 +159,7 @@ class DataLoader:
             records_time_idx = derive_rep_timeline(training_x_set,
                                                    self.day_slot * self.num_days_per_week,
                                                    self.num_of_vertices,
-                                                   load_file=False,
+                                                   load_file=True,
                                                    output_filename=self.rep_vector_filename)
 
         # avoided mixing training, testing, and validation dataset at the edge.
@@ -170,9 +170,9 @@ class DataLoader:
 
         # When we consider last day or last week data, we have to drop a certain amount data in training
         # y dataset as done in training x dataset.
-        training_y_set = seq_train[total_drop:, self.len_input:]
-        validation_y_set = seq_val[:, self.len_input:]
-        testing_y_set = seq_test[:, self.len_input:]
+        training_y_set = seq_train[total_drop:-1 * self.n_seq, self.len_input:]
+        validation_y_set = seq_val[:-1 * self.n_seq, self.len_input:]
+        testing_y_set = seq_test[:-1 * self.n_seq, self.len_input:]
 
         training_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
         validation_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
