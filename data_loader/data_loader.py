@@ -23,6 +23,7 @@ class DataLoader:
         self.last_week = data_configs['last_week']
         self.num_days_per_week = data_configs['num_days_per_week']
         self.rep_vectors = data_configs['rep_vectors']
+        self.rep_vector_filename = data_configs['rep_vector_filename']
 
         self.distance_threshold = data_configs['distance_threshold']
         self.semantic_threshold = data_configs['semantic_threshold']
@@ -112,8 +113,7 @@ class DataLoader:
             self.dataset = pickle.load(preprocessed_file)
             return
 
-        data_seq = pd.read_csv(self.node_data_filename).values
-        data_seq = data_seq[:, 1:]
+        data_seq = pd.read_csv(self.node_data_filename, header=None).values
         data_seq = np.expand_dims(data_seq, axis=-1)
 
         new_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
@@ -123,12 +123,15 @@ class DataLoader:
             new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
 
         total_days = self.n_train + self.n_test + self.n_val
-        seq_train = seq_gen_v2(self.n_train, data_seq, 0, self.n_seq, self.num_of_vertices, self.day_slot, 1,
+        seq_train = seq_gen_v2(self.n_train, new_seq, 0, self.n_seq, self.num_of_vertices, self.day_slot, 2,
                                total_days)
-        seq_val = seq_gen_v2(self.n_val, data_seq, self.n_train, self.n_seq, self.num_of_vertices, self.day_slot, 1,
+        seq_val = seq_gen_v2(self.n_val, new_seq, self.n_train, self.n_seq, self.num_of_vertices, self.day_slot, 2,
                              total_days)
-        seq_test = seq_gen_v2(self.n_test, data_seq, self.n_train + self.n_val, self.n_seq, self.num_of_vertices,
-                              self.day_slot, 1, total_days)
+        seq_test = seq_gen_v2(self.n_test, new_seq, self.n_train + self.n_val, self.n_seq, self.num_of_vertices,
+                              self.day_slot, 2, total_days)
+
+        # Take seq all to find last day, last week time seq
+        seq_all = np.concatenate((seq_train, seq_val, seq_test), axis=0)
 
         # attach last day and last week time series with last hour data
         # Warning: we attached weekly index along with the speed value in the prev step.
@@ -137,21 +140,27 @@ class DataLoader:
         total_drop = 0
         if self.last_day:
             total_drop = self.day_slot * 1
-        elif self.last_week:
+        if self.last_week:
             total_drop = self.day_slot * self.num_days_per_week
-        training_x_set = attach_prev_dys_seq(seq_train, self.len_input, self.day_slot, self.num_days_per_week,
-                                             self.last_week, self.last_day, total_drop)
-        validation_x_set = attach_prev_dys_seq(seq_val, self.len_input, self.day_slot, self.num_days_per_week,
-                                               self.last_week, self.last_day, total_drop)
-        testing_x_set = attach_prev_dys_seq(seq_test, self.len_input, self.day_slot, self.num_days_per_week,
-                                            self.last_week, self.last_day, total_drop)
+        x = attach_prev_dys_seq(seq_all,
+                                self.len_input,
+                                self.day_slot,
+                                self.num_days_per_week,
+                                self.n_train,
+                                self.n_val,
+                                self.last_week,
+                                self.last_day,
+                                total_drop)
+        training_x_set, validation_x_set, testing_x_set = x['train'], x['val'], x['test']
 
         # Derive global representation vector for each sensor for similar time steps
         records_time_idx = None
         if self.rep_vectors:
             records_time_idx = derive_rep_timeline(training_x_set,
                                                    self.day_slot * self.num_days_per_week,
-                                                   self.num_of_vertices)
+                                                   self.num_of_vertices,
+                                                   load_file=False,
+                                                   output_filename=self.rep_vector_filename)
 
         # avoided mixing training, testing, and validation dataset at the edge.
         # The time series during the last two hours of train, test and val datasets are ignored
@@ -161,9 +170,9 @@ class DataLoader:
 
         # When we consider last day or last week data, we have to drop a certain amount data in training
         # y dataset as done in training x dataset.
-        training_y_set = seq_train[total_drop:-1 * self.n_seq, self.len_input:]
-        validation_y_set = seq_val[:-1 * self.n_seq, self.len_input:]
-        testing_y_set = seq_test[:-1 * self.n_seq, self.len_input:]
+        training_y_set = seq_train[total_drop:, self.len_input:]
+        validation_y_set = seq_val[:, self.len_input:]
+        testing_y_set = seq_test[:, self.len_input:]
 
         training_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
         validation_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
@@ -177,17 +186,6 @@ class DataLoader:
         new_testing_y_set = np.concatenate(
             (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], testing_y_set[:, :, :, 0:2]), axis=1)
 
-        # training_yt_set = np.concatenate(
-        #     (train_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 1:2]), axis=1)
-        # validation_yt_set = np.concatenate(
-        #     (val_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 1:2]), axis=1)
-        # testing_yt_set = np.concatenate(
-        #     (test_time_idx[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 1:2]), axis=1)
-
-        # time idx
-        xt_train, xt_val, xt_test = np.take(training_x_set, [1, 3, 5], axis=-1), np.take(validation_x_set, [1, 3, 5], axis=-1), np.take(testing_x_set, [1, 3, 5], axis=-1)
-        yt_train, yt_val, yt_test = np.take(new_training_y_set, [1], axis=-1), np.take(new_validation_y_set, [1], axis=-1), np.take(new_testing_y_set, [1], axis=-1)
-
         # z-score normalization on input and target values
         stats_x, x_train, x_val, x_test = z_score_normalize(training_x_set, validation_x_set, testing_x_set)
         stats_y, y_train, y_val, y_test = z_score_normalize(new_training_y_set, new_validation_y_set, new_testing_y_set)
@@ -197,22 +195,16 @@ class DataLoader:
         np.random.shuffle(idx_samples)
         x_train = x_train[idx_samples]
         y_train = y_train[idx_samples]
-        xt_train = xt_train[idx_samples]
-        yt_train = yt_train[idx_samples]
 
         self.n_batch_train = int(len(x_train) / self.batch_size)
         self.n_batch_test = int(len(x_test) / self.batch_size)
         self.n_batch_val = int(len(x_val) / self.batch_size)
 
         data = {'train': x_train, 'val': x_val, 'test': x_test}
-        datat = {'train': xt_train, 'val': xt_val, 'test': xt_test}
         y = {'train': y_train, 'val': y_val, 'test': y_test}
-        yt = {'train': yt_train, 'val': yt_val, 'test': yt_test}
         self.dataset = Dataset(
             data=data,
-            datat=datat,
             y=y,
-            yt=yt,
             stats_x=stats_x,
             stats_y=stats_y,
             n_batch_train=self.n_batch_train,
@@ -265,16 +257,12 @@ class DataLoader:
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
         xs = self.dataset.get_data(_type)
-        xts = self.dataset.get_datat(_type)
         ys = self.dataset.get_y(_type)
-        yts = self.dataset.get_yt(_type)
 
         limit = (offset + self.batch_size) if (offset + self.batch_size) <= len(xs) else len(xs)
 
         xs = xs[offset: limit]
-        xts = xts[offset: limit]
         ys = ys[offset: limit]
-        yts = yts[offset: limit]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
         ys_input = np.copy(ys)
@@ -288,15 +276,12 @@ class DataLoader:
 
         num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
         enc_xs = []
-        enc_xst = []
         for k in range(self.enc_features):
             batched_xs = [[] for i in range(self.batch_size)]
-            batched_xst = [[] for i in range(self.batch_size)]
 
-            for idx, (x_timesteps, xt_timesteps) in enumerate(zip(xs, xts)):
+            for idx, x_timesteps in enumerate(xs):
                 seq_len = xs.shape[1]
                 tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
-                tmp_xst = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
                 for inner_f in range(num_inner_f_enc):
                     start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
                     end_idx = start_idx + 1
@@ -304,25 +289,18 @@ class DataLoader:
                     tmp_xs_start_idx = seq_len * inner_f
                     tmp_xs_end_idx = seq_len * inner_f + seq_len
                     tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
-                    tmp_xst[tmp_xs_start_idx: tmp_xs_end_idx] = xt_timesteps[:, :, start_idx: end_idx]
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
-                batched_xst[idx] = tmp_xst
 
             batched_xs = torch.stack(batched_xs)
-            batched_xst = np.array(batched_xst)
             enc_xs.append(batched_xs)
-            enc_xst.append(batched_xst)
 
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
-        dec_yst = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data
-        for idx, (y_timesteps, yt_timesteps) in enumerate(zip(ys_input, yts)):
+        for idx, y_timesteps in enumerate(ys_input):
             dec_ys[idx] = torch.Tensor(y_timesteps).to(device)
-            dec_yst[idx] = yt_timesteps
             dec_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
 
         dec_ys = torch.stack(dec_ys)
-        dec_yst = np.array(dec_yst)
 
-        return enc_xs, enc_xst, dec_ys, dec_yst, dec_ys_target
+        return enc_xs, None, dec_ys, dec_ys_target

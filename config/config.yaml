@@ -2,13 +2,13 @@
 model:
   batch_size: 8
   epochs: 120
-  model_output_path: "output/model/pems-bay/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "output/model/pems-bay/multi-cross-attn/epoch_v1_88_model.pt"
+  model_output_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_{}_model.pt"
+  model_input_path: "output/model/pemsd7/multi-cross-attn/epoch_v1_88_model.pt"
   load_saved_model: False
   device: cuda
   transformer:
     encoder:
-      features: 1 # To indicates multiple encoders (feature-wise). default is 1
+      features: 2 # To indicates multiple encoders (feature-wise). default is 1
       emb_dim: 16
       seq_len: 36
       input_dim: 2
@@ -51,9 +51,9 @@ model:
       decoder_block:
         n_heads: 8
         expansion_factor: 4
-        cross_attn_features: 1 # Used to indicates how many feature-wise cross attentions in the decoder
+        cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
         src_dropout: 0.3
-        cross_attn_dropout: 0.3
+        cross_attn_dropout: [0.3, 0.3]
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208
@@ -68,19 +68,20 @@ model:
 
 # Data Configs
 data:
-  edge_weight_filename: "data/PEMS-BAY/adj_dis.pkl"
-  edge_weight_original_filename: "data/PEMS-BAY/adj_METR-LA.pkl"
-  semantic_adj_filename: "data/METRLA/METRLA_time_idx_semantic_edges.pickle"
+  edge_weight_filename: "data/PEMSD7/adj_dis.pkl"
+  edge_weight_original_filename: "data/PEMSD7/PeMSD7_W_228_original.csv"
+  semantic_adj_filename: "data/PEMSD7/PeMSD7_W_228.pickle"
   edge_weight_scaling: True
-  node_data_filename: "data/PEMS-BAY/PEMS-BAY.csv"
-  num_of_vertices: 325
+  node_data_filename: "data/PEMSD7/PeMSD7_V_228.csv"
+  num_of_vertices: 228
   points_per_hour: 12
   len_input: 12
   last_week: True
   last_day: True
   num_days_per_week: 5
-  rep_vectors: False
+  rep_vectors: True
+  rep_vector_filename: "data/PEMSD7/PEMSD7_rep_vector.pickle"
   preprocess: True
-  preprocess_output_path: "data/PEMS-BAY/METRLA_Preprocessed.pickle"
+  preprocess_output_path: "data/PEMSD7/PEMSD7_Preprocessed.pickle"
   distance_threshold: 2.5
   semantic_threshold: 5

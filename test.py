@@ -22,14 +22,13 @@ def test(_type: str,
         n_batch = data_loader.get_dataset().get_n_batch_val()
 
     offset = 0
-    dataset = data_loader.dataset
     with torch.inference_mode():
         for batch in range(n_batch):
-            test_x, test_xt, test_y, test_yt, test_y_target = data_loader.load_batch(_type=_type,
-                                                                                     offset=offset,
-                                                                                     device=device)
+            test_x, test_x_time_idx, test_y, test_y_target = data_loader.load_batch(_type=_type,
+                                                                                    offset=offset,
+                                                                                    device=device)
 
-            out = model(test_x, test_xt, test_y, test_yt, False)
+            out = model(test_x, test_x_time_idx, test_y, False)
             out = out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1)
 
             test_y_tensor = ()
@@ -42,8 +41,8 @@ def test(_type: str,
 
             mae_loss_val, rmse_loss_val, mape_loss_val = calculate_loss(y_pred=out,
                                                                         y=test_y_target,
-                                                                        _mean=dataset.get_mean(),
-                                                                        _std=dataset.get_std())
+                                                                        _max=data_loader.dataset.get_max(),
+                                                                        _min=data_loader.dataset.get_min())
             mae_loss += mae_loss_val
             rmse_loss += rmse_loss_val
             mape_loss += mape_loss_val
@@ -51,7 +50,7 @@ def test(_type: str,
             if batch % 100 == 0:
                 logger.info(f"MAE {mae_loss / (batch + 1)}")
 
-            offset += dataset.batch_size
+            offset += data_loader.batch_size
 
     mae_loss = mae_loss / float(n_batch)
     rmse_loss = rmse_loss / float(n_batch)

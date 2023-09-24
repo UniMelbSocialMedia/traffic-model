@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 from utils.math_utils import normalize
 
@@ -65,14 +66,20 @@ def seq_gen_v2(len_seq, data_seq, offset, n_frame, n_route, day_slot, C_0=1, tot
     return tmp_seq
 
 
-def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_week: int, last_week: bool,
-                        last_day: bool, total_drop: int):
-    seq_tmp = seq[total_drop:]
+def attach_prev_dys_seq(seq_all: np.array, n_his: int, day_slots: int, num_days_per_week: int, n_train: int, n_val: int,
+                        last_week: bool, last_day: bool, total_drop: int):
+    train_end_limit = day_slots * n_train - total_drop
+    val_end_limit = day_slots * (n_train + n_val) - total_drop
 
-    seq_output = []
+    seq_tmp = seq_all[total_drop:]
+
+    seq_input_train = []
+    seq_input_val = []
+    seq_input_test = []
+
     for k in range(len(seq_tmp)):
-        lst_dy_data = seq[total_drop + k - day_slots][:n_his]
-        lst_wk_data = seq[total_drop + k - (day_slots * num_days_per_week)][:n_his]
+        lst_dy_data = seq_all[total_drop + k - day_slots][:n_his, :, 0:2]
+        lst_wk_data = seq_all[total_drop + k - (day_slots * num_days_per_week)][:n_his, :, 0:2]
 
         tmp = seq_tmp[k][:n_his]
         if last_day:
@@ -80,12 +87,18 @@ def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_
         if last_week:
             tmp = np.concatenate((tmp, lst_wk_data), axis=-1)
 
-        seq_output.append(tmp)
+        if k < train_end_limit:
+            seq_input_train.append(tmp)
+        elif train_end_limit <= k < val_end_limit:
+            seq_input_val.append(tmp)
+        else:
+            seq_input_test.append(tmp)
 
-    return np.array(seq_output)
+    x = {'train': np.array(seq_input_train), 'val': np.array(seq_input_val), 'test': np.array(seq_input_test)}
+    return x
 
 
-def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: int):
+def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: int, load_file=True, output_filename= None):
     """
     For every data point per week, we derive a representation time series.
 
@@ -99,6 +112,12 @@ def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: 
     -------
     records_time_idx: set of representation vectors per each data point in a week
     """
+
+    if load_file:
+        output_file = open(output_filename, 'rb')
+        records_time_idx = pickle.load(output_file)
+        return records_time_idx
+
     training_size = x_set.shape[0]
     num_weeks_training = int(training_size / points_per_week)
     seq_len = x_set.shape[1]
@@ -144,6 +163,10 @@ def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: 
             sensor_means.append(mean)
 
         records_time_idx[record_key] = np.array(sensor_means).transpose(1, 0, 2)
+
+    if output_filename is not None:
+        with open(output_filename, 'wb') as file:
+            pickle.dump(records_time_idx, file)
 
     return records_time_idx
 
@@ -194,9 +217,9 @@ def search_index(max_len, num_of_depend=1, num_for_predict=12, points_per_hour=1
     return x_idx
 
 
-def create_lookup_index(last_week=True, last_dy=True, dec_seq_offset=0, dec_seq_len=12):
+def create_lookup_index(last_week=True, last_dy=True, dec_seq_offset=0, dec_seq_len=12, num_days_per_week=7):
     wk_lookup_idx = search_index(max_len=0,
-                                 units=24 * 7,
+                                 units=24 * num_days_per_week,
                                  offset=0)
     dy_lookup_idx = search_index(max_len=0,
                                  units=24,

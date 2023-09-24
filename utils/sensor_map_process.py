@@ -40,11 +40,11 @@ def load_data_file(file: str):
 
 
 if __name__ == '__main__':
-    df = load_data_file('../data/PEMS-BAY/PEMS-BAY-META.csv')
+    df = load_data_file('../data/PEMSD7/PeMSD7_M_Station_Info.csv')
 
     stations = []
     for index, row in df.iterrows():
-        stations.append(Station(row['sensor_id'], row['Longitude'], row['Latitude']))
+        stations.append(Station(row['ID'], row['Longitude'], row['Latitude']))
 
     for st in stations:
         distances = []
@@ -62,5 +62,5 @@ if __name__ == '__main__':
 
     all_mean = all_mean / (len(stations) * 1.0)
 
-    drop_edges(filename_out='../data/PEMS-BAY/adj_dis.pkl',
+    drop_edges(filename_out='../data/PEMSD7/adj_dis.pkl',
                stations=stations)
