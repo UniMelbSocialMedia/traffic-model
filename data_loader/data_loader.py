@@ -49,54 +49,61 @@ class DataLoader:
         self.points_per_week = self.points_per_hour * 24 * self.num_days_per_week
 
         self.num_f = 1
+        if self.last_week:
+            self.num_f += 1
         if self.last_day:
             self.num_f += 1
-        if self.last_week:
+        if self.rep_vectors:
+            self.num_f += 1
+        if self.rep_vectors and self.last_day:
+            self.num_f += 1
+        if self.rep_vectors and self.last_week:
             self.num_f += 1
 
     def _generate_new_x_arr(self, x_set: np.array, records_time_idx: dict):
         # WARNING: This has be changed accordingly.
         speed_idx = 0
-        last_dy_idx = 1
-        last_wk_idx = 2
+        last_dy_idx = 2
+        last_wk_idx = 4
 
         # Attach rep vectors for last day and last week data and drop weekly time index value
-        new_n_f = x_set.shape[3] - 1
+        new_n_f = x_set.shape[3]
         # To add rep last hour seq
         if self.rep_vectors:
-            new_n_f += 1
+            new_n_f += 2
         # To add rep last dy seq
-        if self.num_of_days and self.rep_vectors:
-            new_n_f += 1
+        if self.last_day and self.rep_vectors:
+            new_n_f += 2
         # To add rep last wk seq
-        if self.num_of_weeks and self.rep_vectors:
-            new_n_f += 1
+        if self.last_week and self.rep_vectors:
+            new_n_f += 2
 
         new_x_set = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
         for i, x in enumerate(x_set):
             # WARNING: had to determine which index represent weekly time idx
             record_key = x[0, 0, 1]
-            record_key_yesterday = record_key - 24 * self.points_per_hour
-            if record_key_yesterday < 0: record_key_yesterday = record_key + self.points_per_week - 24 * self.points_per_hour
+            record_key_yesterday = x[0, 0, 3]
 
-            tmp = x[:, :, speed_idx:speed_idx + 1]
-            if self.num_of_days:
-                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 1]
+            tmp = x[:, :, speed_idx:speed_idx + 2]
+            if self.last_day:
+                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 2]
                 tmp = np.concatenate((tmp, last_dy_data), axis=-1)
-            if self.num_of_weeks:
-                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 1]
+            if self.last_week:
+                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 2]
                 tmp = np.concatenate((tmp, last_wk_data), axis=-1)
             if self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
-            if self.num_of_days and self.rep_vectors:
+                tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
+            if self.last_day and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key_yesterday]), axis=-1)
-            if self.num_of_weeks and self.rep_vectors:
+                tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
+            if self.last_week and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
+                tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
 
             new_x_set[i] = tmp
 
-        time_idx = x_set[:, :, :, 1:2]
-        return new_x_set, time_idx
+        return new_x_set
 
     # generate training, validation and test data
     def load_node_data_file(self):
@@ -115,15 +122,13 @@ class DataLoader:
             new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=-1)
             new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
 
-        n_records = len(new_seq)
-        self.n_train = int(n_records * 0.7)
-        self.n_test = int(n_records * 0.2)
-        self.n_val = int(n_records * 0.1)
-
-        seq_train = seq_gen_v2(self.n_train, new_seq[:self.n_train], self.n_seq, self.num_of_vertices, 2)
-        seq_val = seq_gen_v2(self.n_val, new_seq[self.n_train:self.n_train + self.n_val], self.n_seq,
-                             self.num_of_vertices, 2)
-        seq_test = seq_gen_v2(self.n_test, new_seq[-1 * self.n_test:], self.n_seq, self.num_of_vertices, 2)
+        total_days = self.n_train + self.n_test + self.n_val
+        seq_train = seq_gen_v2(self.n_train, data_seq, 0, self.n_seq, self.num_of_vertices, self.day_slot, 1,
+                               total_days)
+        seq_val = seq_gen_v2(self.n_val, data_seq, self.n_train, self.n_seq, self.num_of_vertices, self.day_slot, 1,
+                             total_days)
+        seq_test = seq_gen_v2(self.n_test, data_seq, self.n_train + self.n_val, self.n_seq, self.num_of_vertices,
+                              self.day_slot, 1, total_days)
 
         # attach last day and last week time series with last hour data
         # Warning: we attached weekly index along with the speed value in the prev step.
@@ -148,11 +153,21 @@ class DataLoader:
                                                    self.day_slot * self.num_days_per_week,
                                                    self.num_of_vertices)
 
+        # avoided mixing training, testing, and validation dataset at the edge.
+        # The time series during the last two hours of train, test and val datasets are ignored
+        training_x_set = training_x_set[: -1 * self.n_seq]
+        validation_x_set = validation_x_set[: -1 * self.n_seq]
+        testing_x_set = testing_x_set[: -1 * self.n_seq]
+
         # When we consider last day or last week data, we have to drop a certain amount data in training
         # y dataset as done in training x dataset.
-        training_y_set = seq_train[total_drop:, self.len_input:]
-        validation_y_set = seq_val[total_drop:, self.len_input:]
-        testing_y_set = seq_test[total_drop:, self.len_input:]
+        training_y_set = seq_train[total_drop:-1 * self.n_seq, self.len_input:]
+        validation_y_set = seq_val[:-1 * self.n_seq, self.len_input:]
+        testing_y_set = seq_test[:-1 * self.n_seq, self.len_input:]
+
+        training_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
+        validation_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
+        testing_x_set = self._generate_new_x_arr(testing_x_set, records_time_idx)
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         new_training_y_set = np.concatenate(

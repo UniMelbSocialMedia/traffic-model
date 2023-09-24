@@ -78,7 +78,7 @@ data:
   len_input: 12
   last_week: True
   last_day: True
-  num_days_per_week: 7
+  num_days_per_week: 5
   rep_vectors: False
   preprocess: True
   preprocess_output_path: "data/PEMS-BAY/METRLA_Preprocessed.pickle"

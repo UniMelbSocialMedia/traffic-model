@@ -49,13 +49,19 @@ def seq_gen(len_seq, data_seq, offset, n_frame, n_route, day_slot, C_0=1):
     return tmp_seq, wk_dy_arr, hr_arr
 
 
-def seq_gen_v2(len_seq, data_seq, n_frame, n_route, C_0=1):
-    seq_dataset_size = len_seq - n_frame
-    tmp_seq = np.zeros((seq_dataset_size, n_frame, n_route, C_0))
-    for i in range(seq_dataset_size):
-        start = i
-        end = start + n_frame
-        tmp_seq[i, :, :, :] = np.reshape(data_seq[start:end, :], [n_frame, n_route, C_0])
+def seq_gen_v2(len_seq, data_seq, offset, n_frame, n_route, day_slot, C_0=1, total_days=44):
+    # Changed to take all the data. Previously it ignored data of last two hours in everyday causes loss of data volume.
+    # However, have to make sure avoid data leakage from validation dataset.
+    n_slot = day_slot
+    total_slots = total_days * day_slot
+
+    tmp_seq = np.zeros((len_seq * n_slot, n_frame, n_route, C_0))
+    for i in range(len_seq):
+        for j in range(n_slot):
+            sta = (i + offset) * day_slot + j
+            end = sta + n_frame
+            if end > total_slots: continue
+            tmp_seq[i * n_slot + j, :, :, :] = np.reshape(data_seq[sta:end, :], [n_frame, n_route, C_0])
     return tmp_seq
 
 
