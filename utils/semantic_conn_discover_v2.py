@@ -94,7 +94,7 @@ def set_edge_semantics(time_idx_file):
             edge_attr.append([distance])
 
     edge_index = [src_edges, dst_edges]
-    edge_attr = scale_weights(edge_attr, scaling=True, min_max=True)
+    edge_attr = scale_weights(np.array(edge_attr), scaling=True, min_max=True)
 
     return (edge_index, edge_attr)
 
@@ -136,53 +136,53 @@ if __name__ == '__main__':
     rep_output_file = "../data/PEMSD7/PEMSD7_rep_vector.pickle"
     time_idx_rep_output_file = "../data/PEMSD7/PEMSD7_time_idx_semantic_rels.pickle"
     edge_details_file = "../data/PEMSD7/PEMSD7_time_idx_semantic_edges.pickle"
-    records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=False)
-
-    n_sensors = 228
-    points_per_week = 288 * 5
-    semantic_rels = {}
-
-    for sensor in range(n_sensors):
-        time_idx_distances = []
-        time_idx_sensors = []
-
-        for time_idx in range(points_per_week):
-            sensor_seq = records_time_idx[time_idx][:, sensor]
-            alignment_details = []
-            distances = []
-            sensor_js = []
-
-            for sensor_j in range(n_sensors):
-                if sensor_j == sensor: continue
-                sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
-
-                try:
-                    alignment = dtw(sensor_seq, sensor_seq_j, window_type="sakoechiba", window_args={'window_size': 3})
-                    alignment_details.append(alignment)
-                    distances.append(alignment.distance)
-                    sensor_js.append(sensor_j)
-                except ValueError as ex:
-                    print(ex)
-
-            min_indices = np.argpartition(distances, 5)[:5]
-            sorted_distances = np.array(distances)[min_indices]
-            sorted_sensors = np.array(sensor_js)[min_indices]
-            time_idx_distances.append(sorted_distances)
-            time_idx_sensors.append(sorted_sensors)
-
-        time_idx_sensors = np.array(time_idx_sensors).flatten()
-        time_idx_distances = np.array(time_idx_distances).flatten()
-        top_similar_sensors = find_most_similar_sensors(time_idx_sensors)
-
-        avg_distances = {}
-        for s, i in top_similar_sensors.items():
-            avg_distances[s] = np.mean(time_idx_distances[i])
-
-        semantic_rels[sensor] = avg_distances
-        print(f"Sensor: {sensor} done")
-
-    with open(time_idx_rep_output_file, 'wb') as file:
-        pickle.dump(semantic_rels, file)
+    # records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=False)
+    #
+    # n_sensors = 228
+    # points_per_week = 288 * 5
+    # semantic_rels = {}
+    #
+    # for sensor in range(n_sensors):
+    #     time_idx_distances = []
+    #     time_idx_sensors = []
+    #
+    #     for time_idx in range(points_per_week):
+    #         sensor_seq = records_time_idx[time_idx][:, sensor]
+    #         alignment_details = []
+    #         distances = []
+    #         sensor_js = []
+    #
+    #         for sensor_j in range(n_sensors):
+    #             if sensor_j == sensor: continue
+    #             sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
+    #
+    #             try:
+    #                 alignment = dtw(sensor_seq, sensor_seq_j, window_type="sakoechiba", window_args={'window_size': 3})
+    #                 alignment_details.append(alignment)
+    #                 distances.append(alignment.distance)
+    #                 sensor_js.append(sensor_j)
+    #             except ValueError as ex:
+    #                 print(ex)
+    #
+    #         min_indices = np.argpartition(distances, 5)[:5]
+    #         sorted_distances = np.array(distances)[min_indices]
+    #         sorted_sensors = np.array(sensor_js)[min_indices]
+    #         time_idx_distances.append(sorted_distances)
+    #         time_idx_sensors.append(sorted_sensors)
+    #
+    #     time_idx_sensors = np.array(time_idx_sensors).flatten()
+    #     time_idx_distances = np.array(time_idx_distances).flatten()
+    #     top_similar_sensors = find_most_similar_sensors(time_idx_sensors)
+    #
+    #     avg_distances = {}
+    #     for s, i in top_similar_sensors.items():
+    #         avg_distances[s] = np.mean(time_idx_distances[i])
+    #
+    #     semantic_rels[sensor] = avg_distances
+    #     print(f"Sensor: {sensor} done")
+    #
+    # with open(time_idx_rep_output_file, 'wb') as file:
+    #     pickle.dump(semantic_rels, file)
 
     edge_details = set_edge_semantics(time_idx_rep_output_file)
     with open(edge_details_file, 'wb') as file:

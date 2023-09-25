@@ -70,7 +70,7 @@ model:
 data:
   edge_weight_filename: "data/PEMSD7/adj_dis.pkl"
   edge_weight_original_filename: "data/PEMSD7/PeMSD7_W_228_original.csv"
-  semantic_adj_filename: "data/PEMSD7/PeMSD7_W_228.pickle"
+  semantic_adj_filename: "data/PEMSD7/PEMSD7_time_idx_semantic_edges.pickle"
   edge_weight_scaling: True
   node_data_filename: "data/PEMSD7/PeMSD7_V_228.csv"
   num_of_vertices: 228
