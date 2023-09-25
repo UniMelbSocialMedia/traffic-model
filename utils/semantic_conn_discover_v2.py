@@ -3,7 +3,7 @@ import numpy as np
 from dtw import *
 import pickle
 
-from utils.data_utils import derive_rep_timeline, scale_weights, get_sample_indices
+from utils.data_utils import derive_rep_timeline, scale_weights, seq_gen_v2, attach_prev_dys_seq
 
 
 def load_rep_vector(node_data_filename, output_filename, load_file=False):
@@ -13,73 +13,60 @@ def load_rep_vector(node_data_filename, output_filename, load_file=False):
         return records_time_idx
 
     points_per_hour = 12
-    num_of_vertices = 307
-    num_of_weeks = 1
-    num_of_days = 1
-    num_of_hours = 1
-    num_of_days_target = 0
-    num_of_weeks_target = 0
-    num_for_predict = 12
+    num_of_vertices = 228
+    last_week = False
+    last_day = True
     len_input = 12
+    num_days_per_week = 5
+    points_per_week = points_per_hour * 24 * num_days_per_week
+    n_train = 34
+    n_test = 5
+    n_val = 5
+    n_seq = len_input * 2
+    day_slot = points_per_hour * 24
 
-    data_seq = np.load(node_data_filename)['data']  # (sequence_length, num_of_vertices, num_of_features)
+    data_seq = pd.read_csv(node_data_filename, header=None).values
+    data_seq = np.expand_dims(data_seq, axis=-1)
 
-    all_samples = []
-    all_targets = []
-
-    new_data_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
-    points_per_week = points_per_hour * 24 * 7
-
+    new_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
     for idx in range(data_seq.shape[0]):
         time_idx = np.array(idx % points_per_week)
-        new_arr = np.expand_dims(np.repeat(time_idx, num_of_vertices, axis=0), axis=1)
-        new_data_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
+        new_arr = np.expand_dims(np.repeat(time_idx, num_of_vertices, axis=0), axis=-1)
+        new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
 
-    for idx in range(new_data_seq.shape[0]):
-        sample = get_sample_indices(data_seq,
-                                    num_of_weeks,
-                                    num_of_days,
-                                    num_of_hours,
-                                    idx,
-                                    num_for_predict,
-                                    points_per_hour,
-                                    num_of_days_target=num_of_days_target,
-                                    num_of_weeks_target=num_of_weeks_target)
-        if (sample[0] is None) and (sample[1] is None) and (sample[2] is None):
-            continue
+    total_days = n_train + n_test + n_val
+    seq_train = seq_gen_v2(n_train, new_seq, 0, n_seq, num_of_vertices, day_slot, 2,
+                           total_days)
+    seq_val = seq_gen_v2(n_val, new_seq, n_train, n_seq, num_of_vertices, day_slot, 2,
+                         total_days)
+    seq_test = seq_gen_v2(n_test, new_seq, n_train + n_val, n_seq, num_of_vertices,
+                          day_slot, 2, total_days)
 
-        week_sample, day_sample, hour_sample, target, wk_dys, hrs, week_sample_target, day_sample_target = sample
+    # Take seq all to find last day, last week time seq
+    seq_all = np.concatenate((seq_train, seq_val, seq_test), axis=0)
 
-        time_idx_sample = np.repeat(np.expand_dims(new_data_seq[idx, :, -1:], axis=0), len_input, axis=0)
-
-        sample = None
-        # if num_of_days_target > 0:
-        #     sample = np.concatenate((sample, day_sample_target[:, :, 0:1]), axis=2)
-
-        if num_of_days > 0:
-            # sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-            sample = np.concatenate((hour_sample[:, :, 0:1], day_sample[:, :, 0:1]), axis=2)
-
-        if num_of_weeks > 0:
-            sample = np.concatenate((sample, week_sample[:, :, 0:1]), axis=2)
-
-        if num_of_weeks_target > 0:
-            sample = np.concatenate((sample, week_sample_target[:, :, 0:1]), axis=2)
-            ### hr and wk_dy indices are not used as features. So skipping attaching ###
-
-        # sample = np.concatenate((sample, hr_idx_sample, wk_dy_idx_sample, time_idx_sample), axis=2)
-        sample = np.concatenate((sample, time_idx_sample), axis=2)
-
-        # target = np.concatenate((target[:, :, 0:1], hr_idx_target, wk_dy_idx_target), axis=2)
-        all_samples.append(sample)
-        all_targets.append(target[:, :, 0:1])
-
-    split_line1 = int(len(all_samples) * 0.6)
-
-    training_x_set = np.array(all_samples[:split_line1])
+    # attach last day and last week time series with last hour data
+    # Warning: we attached weekly index along with the speed value in the prev step.
+    # So, picking right index is important from now on. new_seq_all -> (8354, 12, 228, 1) -> (8354, 12, 228, 2)
+    # In the following step we attach one or two values pertaining to last day and last week speed values
+    total_drop = 0
+    if last_day:
+        total_drop = day_slot * 1
+    if last_week:
+        total_drop = day_slot * num_days_per_week
+    x = attach_prev_dys_seq(seq_all,
+                            len_input,
+                            day_slot,
+                            num_days_per_week,
+                            n_train,
+                            n_val,
+                            last_week,
+                            last_day,
+                            total_drop)
+    training_x_set, validation_x_set, testing_x_set = x['train'], x['val'], x['test']
 
     # Derive global representation vector for each sensor for similar time steps
-    records_time_idx = derive_rep_timeline(training_x_set, points_per_week, num_of_vertices)
+    records_time_idx = derive_rep_timeline(training_x_set, points_per_week, num_of_vertices, load_file=False)
 
     with open(output_filename, 'wb') as file:
         pickle.dump(records_time_idx, file)
@@ -145,26 +132,27 @@ def find_most_similar_sensors(data):
 
 if __name__ == '__main__':
 
-    graph_signal_matrix_filename = "../data/PEMS07/PeMS07.npz"
-    rep_output_file = "../data/PEMS07/PeMS07_rep_vector.csv"
-    time_idx_rep_output_file = "../data/PEMS07/PeMS07_time_idx_semantic_rels.pickle"
-    edge_details_file = "../data/PEMS07/PeMS07_time_idx_semantic_edges.pickle"
-    records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=True)
+    graph_signal_matrix_filename = "../data/PEMSD7/PeMSD7_V_228.csv"
+    rep_output_file = "../data/PEMSD7/PEMSD7_rep_vector.pickle"
+    time_idx_rep_output_file = "../data/PEMSD7/PEMSD7_time_idx_semantic_rels.pickle"
+    edge_details_file = "../data/PEMSD7/PEMSD7_time_idx_semantic_edges.pickle"
+    records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=False)
 
-    n_sensors = 307
+    n_sensors = 228
+    points_per_week = 288 * 5
     semantic_rels = {}
 
-    for sensor in range(150, 307):
+    for sensor in range(n_sensors):
         time_idx_distances = []
         time_idx_sensors = []
 
-        for time_idx in range(2016):
+        for time_idx in range(points_per_week):
             sensor_seq = records_time_idx[time_idx][:, sensor]
             alignment_details = []
             distances = []
             sensor_js = []
 
-            for sensor_j in range(307):
+            for sensor_j in range(n_sensors):
                 if sensor_j == sensor: continue
                 sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
 
