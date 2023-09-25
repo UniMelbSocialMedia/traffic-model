@@ -81,7 +81,7 @@ data:
   num_days_per_week: 5
   rep_vectors: True
   rep_vector_filename: "data/PEMSD7/PEMSD7_rep_vector.pickle"
-  preprocess: True
+  preprocess: False
   preprocess_output_path: "data/PEMSD7/PEMSD7_Preprocessed.pickle"
   distance_threshold: 2.5
   semantic_threshold: 5

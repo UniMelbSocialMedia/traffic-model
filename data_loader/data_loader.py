@@ -213,8 +213,8 @@ class DataLoader:
             batch_size=self.batch_size,
         )
 
-        # with open(self.preprocess_output_path, 'wb') as file:
-        #     pickle.dump(self.dataset, file)
+        with open(self.preprocess_output_path, 'wb') as file:
+            pickle.dump(self.dataset, file)
 
     def get_dataset(self):
         return self.dataset
