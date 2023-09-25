@@ -158,5 +158,5 @@ class TransformerEncoder(nn.Module):
             return out  # 32x10x512
 
         else:
-            out_e = self.dropout_e(self.out_e_lin(out_e))
+            out_e = self.dropout_e(out_e)
             return out_e
