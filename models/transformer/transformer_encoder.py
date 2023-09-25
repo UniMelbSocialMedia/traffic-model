@@ -61,7 +61,7 @@ class TransformerEncoder(nn.Module):
         # by merging embeddings we increase the output dimension
         if self.merge_emb:
             self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 4)
+        self.out_norm = nn.LayerNorm(self.emb_dim)
 
         self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
         self.dropout_e = nn.Dropout(dropout_e)
