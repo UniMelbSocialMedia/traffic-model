@@ -180,7 +180,7 @@ class GATConvV8(MessagePassingV8):
                 ])
 
         # For expansion of destination node's value to match with source node's values dimension
-        self.exp_lin = Linear(1536, 384, bias=bias, weight_initializer='glorot')
+        self.exp_lin = Linear(4608, 2304, bias=bias, weight_initializer='glorot')
 
         # self.msg_f = torch.zeros((num_edges, 4, 64 * self.seq_len)).to('cuda')
         # self.x_r_new = torch.zeros((36, num_edges, 4, 64)).to('cuda')
@@ -200,7 +200,7 @@ class GATConvV8(MessagePassingV8):
         if bias and concat:
             self.bias = Parameter(torch.Tensor(heads * out_channels))
         elif bias and not concat:
-            self.bias = Parameter(torch.Tensor(16 * self.seq_len))
+            self.bias = Parameter(torch.Tensor(64 * self.seq_len))
         else:
             self.register_parameter('bias', None)
 
@@ -396,8 +396,6 @@ class GATConvV8(MessagePassingV8):
 
         # ed6 = time.time()
         # print(f'Time 6: {ed6 - ed5}')
-
-        msg_f = self.exp_lin(msg_f)
 
         return msg_f
 
