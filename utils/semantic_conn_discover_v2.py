@@ -4,6 +4,7 @@ from dtw import *
 import pickle
 
 from utils.data_utils import derive_rep_timeline, scale_weights, get_sample_indices
+from utils.logger import logger
 
 
 def load_rep_vector(node_data_filename, output_filename, load_file=False):
@@ -192,7 +193,7 @@ if __name__ == '__main__':
             avg_distances[s] = np.mean(time_idx_distances[i])
 
         semantic_rels[sensor] = avg_distances
-        print(f"Sensor: {sensor} done")
+        logger.info(f"Sensor: {sensor} done")
 
     with open(time_idx_rep_output_file, 'wb') as file:
         pickle.dump(semantic_rels, file)
