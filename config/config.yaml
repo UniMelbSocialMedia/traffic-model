@@ -34,7 +34,7 @@ model:
         edge_dim: 1
         skip_conn: False
     decoder:
-      emb_dim: 64
+      emb_dim: 16
       seq_len: 13
       seq_offset: 1 # Indicates how many timesteps in the previous hour consider as inputs in the decoder
       input_dim: 1
@@ -83,5 +83,5 @@ data:
   rep_vector_filename: "data/PEMSD7/PEMSD7_rep_vector.pickle"
   preprocess: True
   preprocess_output_path: "data/PEMSD7/PEMSD7_Preprocessed.pickle"
-  distance_threshold: 1.5
-  semantic_threshold: 3
+  distance_threshold: 10
+  semantic_threshold: 5
