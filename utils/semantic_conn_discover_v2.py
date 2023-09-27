@@ -13,7 +13,7 @@ def load_rep_vector(node_data_filename, output_filename, load_file=False):
         return records_time_idx
 
     points_per_hour = 12
-    num_of_vertices = 307
+    num_of_vertices = 170
     num_of_weeks = 1
     num_of_days = 1
     num_of_hours = 1
@@ -146,16 +146,16 @@ def find_most_similar_sensors(data):
 
 if __name__ == '__main__':
 
-    graph_signal_matrix_filename = "../data/PEMS04/PEMS04.npz"
-    rep_output_file = "../data/PEMS04/PEMS04_rep_vector.pickle"
-    time_idx_rep_output_file = "../data/PEMS04/PEMS04_time_idx_semantic_rels.pickle"
-    edge_details_file = "../data/PEMS04/PEMS04_time_idx_semantic_edges.pickle"
+    graph_signal_matrix_filename = "../data/PEMS08/PEMS08.npz"
+    rep_output_file = "../data/PEMS08/PEMS08_rep_vector.pickle"
+    time_idx_rep_output_file = "../data/PEMS08/PEMS08_time_idx_semantic_rels.pickle"
+    edge_details_file = "../data/PEMS08/PEMS08_time_idx_semantic_edges.pickle"
     records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=False)
 
-    n_sensors = 307
+    n_sensors = 170
     semantic_rels = {}
 
-    for sensor in range(0, 307):
+    for sensor in range(0, 170):
         time_idx_distances = []
         time_idx_sensors = []
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
             distances = []
             sensor_js = []
 
-            for sensor_j in range(307):
+            for sensor_j in range(170):
                 if sensor_j == sensor: continue
                 sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
 
