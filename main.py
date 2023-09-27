@@ -9,7 +9,7 @@ from test import test
 from train import train
 from utils.data_utils import create_lookup_index
 from utils.logger import logger
-from utils.masked_mae_loss import Masked_MAE_Loss
+from utils.loss_func import Masked_MAE_Loss, Huber_Loss
 
 
 def train_validate(model, configs: dict, data_loader: DataLoader):
@@ -17,9 +17,10 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
         model.load_state_dict(torch.load(configs['model_input_path']))
 
     # mse_loss_fn = nn.L1Loss()
-    mse_loss_fn = Masked_MAE_Loss()
+    # mse_loss_fn = Masked_MAE_Loss()
+    huber_loss_fn = Huber_Loss(delta=1.0)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=15, T_mult=1,
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=12, T_mult=1,
                                                                         eta_min=0.00005)
     # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
     optimizer.zero_grad()
@@ -33,7 +34,7 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
                                                                  optimizer=optimizer,
-                                                                 loss_fn=mse_loss_fn,
+                                                                 loss_fn=huber_loss_fn,
                                                                  device=configs['device'],
                                                                  seq_offset=dec_offset)
 
