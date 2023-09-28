@@ -71,16 +71,16 @@ class DataLoader:
         last_wk_idx = 4
 
         # Attach rep vectors for last day and last week data and drop weekly time index value
-        new_n_f = x_set.shape[3]
+        new_n_f = x_set.shape[3]-3
         # To add rep last hour seq
         if self.rep_vectors:
-            new_n_f += 2
+            new_n_f += 1
         # To add rep last dy seq
         if self.num_of_days and self.rep_vectors:
-            new_n_f += 2
+            new_n_f += 1
         # To add rep last wk seq
         if self.num_of_weeks and self.rep_vectors:
-            new_n_f += 2
+            new_n_f += 1
 
         new_x_set = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
         for i, x in enumerate(x_set):
@@ -88,22 +88,22 @@ class DataLoader:
             record_key = x[0, 0, 1]
             record_key_yesterday = x[0, 0, 3]
 
-            tmp = x[:, :, speed_idx:speed_idx + 2]
+            tmp = x[:, :, speed_idx:speed_idx + 1]
             if self.num_of_days:
-                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 2]
+                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 1]
                 tmp = np.concatenate((tmp, last_dy_data), axis=-1)
             if self.num_of_weeks:
-                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 2]
+                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 1]
                 tmp = np.concatenate((tmp, last_wk_data), axis=-1)
             if self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
-                tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
+                # tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
             if self.num_of_days and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key_yesterday]), axis=-1)
-                tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
+                # tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
             if self.num_of_weeks and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
-                tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
+                # tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
 
             new_x_set[i] = tmp
 
@@ -168,7 +168,7 @@ class DataLoader:
 
             # target = np.concatenate((target[:, :, 0:1], hr_idx_target, wk_dy_idx_target), axis=2)
             all_samples.append(sample)
-            all_targets.append(target[:, :, [0, 3]])
+            all_targets.append(target[:, :, 0:1])
 
         split_line1 = int(len(all_samples) * 0.6)
         split_line2 = int(len(all_samples) * 0.8)
@@ -196,11 +196,11 @@ class DataLoader:
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
-            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], training_y_set), axis=1)
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set), axis=1)
         validation_y_set = np.concatenate(
-            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], validation_y_set), axis=1)
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set), axis=1)
         testing_y_set = np.concatenate(
-            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], testing_y_set), axis=1)
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set), axis=1)
 
         # max-min normalization on input and target values
         (stats_x, x_train, x_val, x_test) = min_max_normalize(training_x_set, validation_x_set, testing_x_set)
@@ -290,7 +290,7 @@ class DataLoader:
 
         # reshaping
         xs_shp = xs.shape
-        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 2))
+        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 1))
 
         num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
         enc_xs = []
@@ -299,7 +299,7 @@ class DataLoader:
 
             for idx, x_timesteps in enumerate(xs):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
                 for inner_f in range(num_inner_f_enc):
                     start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
                     end_idx = start_idx + 1
