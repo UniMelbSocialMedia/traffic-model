@@ -10,7 +10,8 @@ def train(model: torch.nn.Module,
           optimizer,
           loss_fn: torch.nn.Module,
           device: str,
-          seq_offset: int = 0) -> tuple:
+          seq_offset: int = 0,
+          _train: bool = True) -> tuple:
     offset = 0
     mae_train_loss = 0.
     rmse_train_loss = 0.
@@ -26,7 +27,7 @@ def train(model: torch.nn.Module,
                                                                                     offset=offset,
                                                                                     device=device)
 
-        out = model(train_x, train_x_time_idx, train_y, True)
+        out = model(train_x, train_x_time_idx, train_y, _train)
         out = out.reshape(out.shape[0] * out.shape[1] * out.shape[2], -1)
 
         train_y_tensor = ()

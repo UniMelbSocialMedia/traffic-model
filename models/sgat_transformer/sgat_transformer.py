@@ -60,12 +60,10 @@ class SGATTransformer(nn.Module):
             dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
             return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
         else:
-            final_out = torch.zeros_like(y)
             dec_out_len = self.dec_seq_len - self.dec_seq_offset
             for i in range(dec_out_len):
-
-                dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
+                y_input = torch.tensor(y)
+                dec_out = self.decoder(y_input, enc_outs, tgt_mask=tgt_mask, device=self.device)
                 y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
-                final_out[:, i + self.dec_seq_offset] = dec_out[:, i + self.dec_out_start_idx]
 
-            return final_out[:, self.dec_seq_offset:]
+            return y[:, self.dec_seq_offset:]
