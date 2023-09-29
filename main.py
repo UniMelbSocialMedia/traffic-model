@@ -12,7 +12,7 @@ from utils.logger import logger
 from utils.loss_func import Masked_MAE_Loss, Huber_Loss
 
 
-def _train(configs, lr, ls_fn, is_lr_sh=True, _train=True):
+def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     optimizer.zero_grad()
 
@@ -68,17 +68,19 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
     huber_loss_fn = Huber_Loss(delta=1.0)
 
     # Initial Training
-    # _train(configs=configs,
-    #        lr=0.001,
-    #        ls_fn=mse_loss_fn,
-    #        is_lr_sh=True,
-    #        _train=True)
+    _train(model=model,
+           configs=configs,
+           lr=0.001,
+           ls_fn=mse_loss_fn,
+           is_lr_sh=True,
+           _train=True)
 
     # Fine tuning
-    best_model_path = _train(configs=configs,
-                             lr=0.0005,
+    best_model_path = _train(model=model,
+                             configs=configs,
+                             lr=0.0001,
                              ls_fn=mse_loss_fn,
-                             is_lr_sh=True,
+                             is_lr_sh=False,
                              _train=False)
 
     # testing model
