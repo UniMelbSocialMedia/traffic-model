@@ -24,8 +24,9 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     best_model_path = None
     min_val_loss = np.inf
     dec_offset = configs['transformer']['decoder']['seq_offset']
+    epochs = configs['train_epochs'] if _train else configs['finetune_epochs']
 
-    for epoch in range(configs['epochs']):
+    for epoch in range(epochs):
         if is_lr_sh:
             logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
