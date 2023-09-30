@@ -288,25 +288,22 @@ class DataLoader:
         if _type != 'train':
             ys_input[:, self.dec_seq_offset:, :, 0:1] = 0
 
-        # reshaping
-        xs_shp = xs.shape
-        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 2))
-
-        num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
+        num_inner_f_enc = 3
         enc_xs = []
         for k in range(self.enc_features):
             batched_xs = [[] for i in range(self.batch_size)]
 
             for idx, x_timesteps in enumerate(xs):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
-                for inner_f in range(num_inner_f_enc):
-                    start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
-                    end_idx = start_idx + 1
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 3))
 
-                    tmp_xs_start_idx = seq_len * inner_f
-                    tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
+                lst_wk = np.concatenate((x_timesteps[:, :, 4:5], x_timesteps[:, :, 10:11], x_timesteps[:, :, 5:6]), axis=-1)
+                lst_dy = np.concatenate((x_timesteps[:, :, 2:3], x_timesteps[:, :, 8:9], x_timesteps[:, :, 3:4]), axis=-1)
+                lst_hr = np.concatenate((x_timesteps[:, :, 0:1], x_timesteps[:, :, 6:7], x_timesteps[:, :, 1:2]), axis=-1)
+
+                tmp_xs[:12] = lst_wk
+                tmp_xs[12:24] = lst_dy
+                tmp_xs[24:36] = lst_hr
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
 
