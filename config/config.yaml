@@ -5,7 +5,7 @@ model:
   finetune_epochs: 24
   model_output_path: "output/model/pems08/multi-cross-attn/epoch_v1_{}_model.pt"
   model_input_path: "output/model/pems08/multi-cross-attn/epoch_v1_7_model.pt"
-  load_saved_model: True
+  load_saved_model: False
   device: cuda
   transformer:
     encoder:
@@ -15,23 +15,23 @@ model:
       input_dim: 1
       merge_emb: False # Indicate whether the graph embeddings merge with non-graph embedding.
       emb_expansion_factor: 3 # If embeddings are merged, it will expand the dimension. the factor depends on whether we use graph, semantinc graph and raw sensor data.
-      n_layers: 4
+      n_layers: 6
       local_trends: True
       graph_semantic_input: True
       graph_input: True
       dropout_e: 0.0
       encoder_block:
-        n_heads: 8
+        n_heads: 4
         expansion_factor: 4
-        src_dropout: 0.2
-        ff_dropout: 0.2
+        src_dropout: 0.1
+        ff_dropout: 0.1
       sgat:
         first_in_f_size: 576
         n_layers: 1
         out_f_sizes: [ 64, 576 ]
-        n_heads: [ 8, 1 ]
-        alpha: 0.2
-        dropout: 0.5
+        n_heads: [ 4, 1 ]
+        alpha: 0.1
+        dropout: 0.3
         edge_dim: 1
         skip_conn: False
     decoder:
@@ -50,11 +50,11 @@ model:
       graph_semantic_input: False
       graph_input: False
       decoder_block:
-        n_heads: 8
+        n_heads: 4
         expansion_factor: 4
         cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
-        src_dropout: 0.2
-        cross_attn_dropout: [0.2, 0.2]
+        src_dropout: 0.1
+        cross_attn_dropout: [0.1, 0.1]
         ff_dropout: 0.2
       sgat:
         first_in_f_size: 208
@@ -87,5 +87,5 @@ data:
   rep_vector_filename: "data/PEMS08/PEMS08_rep_vector.pickle"
   preprocess: False
   preprocess_output_path: "data/PEMS08/PEMS08_Preprocessed.pickle"
-  distance_threshold: 1000
-  semantic_threashold: 5
+  distance_threshold: 2000
+  semantic_threashold: 7
