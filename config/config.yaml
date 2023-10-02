@@ -1,10 +1,10 @@
 # Model Configs
 model:
-  batch_size: 4
+  batch_size: 2
   train_epochs: 60
   finetune_epochs: 24
   model_output_path: "output/model/pems08/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "output/model/pems08/multi-cross-attn/epoch_v1_7_model.pt"
+  model_input_path: "output/model/pems08/multi-cross-attn/epoch_v1_57_model.pt"
   load_saved_model: False
   device: cuda
   transformer:
@@ -15,13 +15,13 @@ model:
       input_dim: 1
       merge_emb: False # Indicate whether the graph embeddings merge with non-graph embedding.
       emb_expansion_factor: 3 # If embeddings are merged, it will expand the dimension. the factor depends on whether we use graph, semantinc graph and raw sensor data.
-      n_layers: 6
+      n_layers: 4
       local_trends: True
       graph_semantic_input: True
       graph_input: True
       dropout_e: 0.0
       encoder_block:
-        n_heads: 4
+        n_heads: 8
         expansion_factor: 4
         src_dropout: 0.1
         ff_dropout: 0.1
@@ -30,8 +30,8 @@ model:
         n_layers: 1
         out_f_sizes: [ 64, 576 ]
         n_heads: [ 4, 1 ]
-        alpha: 0.1
-        dropout: 0.3
+        alpha: 0.2
+        dropout: 0.4
         edge_dim: 1
         skip_conn: False
     decoder:
@@ -50,7 +50,7 @@ model:
       graph_semantic_input: False
       graph_input: False
       decoder_block:
-        n_heads: 4
+        n_heads: 8
         expansion_factor: 4
         cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
         src_dropout: 0.1
