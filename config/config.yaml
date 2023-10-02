@@ -24,13 +24,26 @@ model:
         expansion_factor: 4
         src_dropout: 0.4
         ff_dropout: 0.4
-      sgat:
+      sgat_normal:
+        first_in_f_size: 576
+        n_layers: 1
+        out_f_sizes: [ 64, 576 ]
+        n_heads: [ 8, 1 ]
+        alpha: 0.2
+        dropout: 0.4
+        dropout_g_dis: 0.4
+        dropout_g_sem: 0.4
+        edge_dim: 1
+        skip_conn: False
+      sgat_rep:
         first_in_f_size: 576
         n_layers: 1
         out_f_sizes: [ 64, 576 ]
         n_heads: [ 8, 1 ]
         alpha: 0.2
         dropout: 0.7
+        dropout_g_dis: 0.7
+        dropout_g_sem: 0.7
         edge_dim: 1
         skip_conn: False
     decoder:

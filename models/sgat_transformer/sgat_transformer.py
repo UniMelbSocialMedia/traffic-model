@@ -27,7 +27,7 @@ class SGATTransformer(nn.Module):
         encoder_configs = tf_configs['encoder']
         encoder_configs['device'] = self.device
         self.encoders = nn.ModuleList([
-            TransformerEncoder(encoder_configs) for _ in range(self.enc_features)
+            TransformerEncoder(encoder_configs, i) for i in range(self.enc_features)
         ])
 
         decoder_configs = tf_configs['decoder']
