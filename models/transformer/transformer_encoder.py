@@ -11,7 +11,7 @@ import torch_geometric.data as data
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, configs: dict):
+    def __init__(self, configs: dict, enc_idx: int):
         super(TransformerEncoder, self).__init__()
 
         self.emb_dim = configs['emb_dim']
@@ -49,12 +49,16 @@ class TransformerEncoder(nn.Module):
         n_layers = configs['n_layers']
 
         # embedding
+        configs['sgat'] = configs['sgat_rep']
+        if enc_idx == 0:
+            configs['sgat'] = configs['sgat_normal']
         self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
         configs['sgat']['seq_len'] = self.seq_len
-        configs['sgat']['num_edges'] = 4993
-        self.graph_embedding = SGATEmbedding(configs['sgat'])
+
+        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
+        self.graph_embedding_dis = SGATEmbedding(configs['sgat'])
+        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_sem']
         self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
-        self.bipart_lin = nn.Linear(self.emb_dim, self.seq_len * self.emb_dim)
 
         # convolution related
         self.local_trends = configs['local_trends']
