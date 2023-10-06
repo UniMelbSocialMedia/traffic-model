@@ -18,7 +18,8 @@ class TransformerEncoder(nn.Module):
         input_dim = configs['input_dim']
         self.merge_emb = configs['merge_emb']
         emb_expansion_factor = configs['emb_expansion_factor']
-        dropout_e = configs['dropout_e']
+        dropout_e_rep = configs['dropout_e_rep']
+        dropout_e_normal = configs['dropout_e_normal']
         max_lookup_len = configs['max_lookup_len']
         self.lookup_idx = configs['lookup_idx']
 
@@ -84,7 +85,8 @@ class TransformerEncoder(nn.Module):
         self.out_norm = nn.LayerNorm(self.emb_dim * 4)
 
         self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
-        self.dropout_e = nn.Dropout(dropout_e)
+        self.dropout_e_rep = nn.Dropout(dropout_e_rep)
+        self.dropout_e_normal = nn.Dropout(dropout_e_normal)
 
     def _create_graph(self, x, edge_index, edge_attr):
         graph = data.Data(x=(Tensor(x[0]), Tensor(x[1])),
@@ -172,9 +174,9 @@ class TransformerEncoder(nn.Module):
                 out_e = self.dropout_e(self.out_e_lin(out_e))
                 return out_e
 
-            out = self.dropout_e(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
+            out = self.dropout_e_normal(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
             return out  # 32x10x512
 
         else:
-            out_e = self.dropout_e(self.out_e_lin(out_e))
+            out_e = self.dropout_e_rep(self.out_e_lin(out_e))
             return out_e
