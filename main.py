@@ -7,6 +7,7 @@ from data_loader.data_loader import DataLoader
 from models.sgat_transformer.sgat_transformer import SGATTransformer
 from test import test
 from train import train
+from utils.custom_lr import CustomLRScheduler
 from utils.data_utils import create_lookup_index
 from utils.logger import logger
 from utils.loss_func import Masked_MAE_Loss, Huber_Loss
@@ -17,9 +18,13 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     optimizer.zero_grad()
 
     if is_lr_sh:
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=12, T_mult=1,
-                                                                            eta_min=0.0001)
+        # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=12, T_mult=1,
+        #                                                                     eta_min=0.0001)
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
+        lr_rates = [0.001, 0.0008875, 0.0007750000000000001, 0.0006625, 0.00055, 0.0004375, 0.000325, 0.0002125, 0.0001,
+                    9.17e-05, 8.340000000000001e-05, 7.510000000000001e-05, 6.68e-05, 5.8500000000000006e-05, 5.02e-05]
+
+        lr_scheduler = CustomLRScheduler(optimizer, lr_rates, 15)
 
     best_model_path = None
     min_val_loss = np.inf
@@ -27,35 +32,35 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     epochs = configs['train_epochs'] if _train else configs['finetune_epochs']
 
     for epoch in range(epochs):
-        if is_lr_sh:
-            logger.info(f"LR: {lr_scheduler.get_last_lr()}")
+        # if is_lr_sh:
+            # logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
-        mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
-                                                                 data_loader=data_loader,
-                                                                 optimizer=optimizer,
-                                                                 loss_fn=ls_fn,
-                                                                 device=configs['device'],
-                                                                 seq_offset=dec_offset,
-                                                                 _train=_train)
-
-        mae_val_loss, rmse_val_loss, mape_val_loss = test(_type='test',
-                                                          model=model,
-                                                          data_loader=data_loader,
-                                                          device=configs['device'],
-                                                          seq_offset=dec_offset)
+        # mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
+        #                                                          data_loader=data_loader,
+        #                                                          optimizer=optimizer,
+        #                                                          loss_fn=ls_fn,
+        #                                                          device=configs['device'],
+        #                                                          seq_offset=dec_offset,
+        #                                                          _train=_train)
+        #
+        # mae_val_loss, rmse_val_loss, mape_val_loss = test(_type='test',
+        #                                                   model=model,
+        #                                                   data_loader=data_loader,
+        #                                                   device=configs['device'],
+        #                                                   seq_offset=dec_offset)
         if is_lr_sh:
             lr_scheduler.step()
 
-        out_txt = f"Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss} " \
-                  f"| mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss} " \
-                  f"| rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}"
-        logger.info(out_txt)
-
-        if min_val_loss > mae_val_loss:
-            min_val_loss = mae_val_loss
-            logger.info('Saving Model...')
-            best_model_path = configs['model_output_path'].format(str(epoch))
-            torch.save(model.state_dict(), best_model_path)  # saving model
+        # out_txt = f"Epoch: {epoch} | mae_train_loss: {mae_train_loss} | rmse_train_loss: {rmse_train_loss} " \
+        #           f"| mape_train_loss: {mape_train_loss} | mae_val_loss: {mae_val_loss} " \
+        #           f"| rmse_val_loss: {rmse_val_loss} | mape_val_loss: {mape_val_loss}"
+        # logger.info(out_txt)
+        #
+        # if min_val_loss > mae_val_loss:
+        #     min_val_loss = mae_val_loss
+        #     logger.info('Saving Model...')
+        #     best_model_path = configs['model_output_path'].format(str(epoch))
+        #     torch.save(model.state_dict(), best_model_path)  # saving model
 
     return best_model_path
 
