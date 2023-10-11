@@ -71,16 +71,16 @@ class DataLoader:
         last_wk_idx = 4
 
         # Attach rep vectors for last day and last week data and drop weekly time index value
-        new_n_f = x_set.shape[3]-3
+        new_n_f = x_set.shape[3]
         # To add rep last hour seq
         if self.rep_vectors:
-            new_n_f += 1
+            new_n_f += 2
         # To add rep last dy seq
         if self.num_of_days and self.rep_vectors:
-            new_n_f += 1
+            new_n_f += 2
         # To add rep last wk seq
         if self.num_of_weeks and self.rep_vectors:
-            new_n_f += 1
+            new_n_f += 2
 
         new_x_set = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
         for i, x in enumerate(x_set):
@@ -88,22 +88,22 @@ class DataLoader:
             record_key = x[0, 0, 1]
             record_key_yesterday = x[0, 0, 3]
 
-            tmp = x[:, :, speed_idx:speed_idx + 1]
+            tmp = x[:, :, speed_idx:speed_idx + 2]
             if self.num_of_days:
-                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 1]
+                last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 2]
                 tmp = np.concatenate((tmp, last_dy_data), axis=-1)
             if self.num_of_weeks:
-                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 1]
+                last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 2]
                 tmp = np.concatenate((tmp, last_wk_data), axis=-1)
             if self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
-                # tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
+                tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
             if self.num_of_days and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key_yesterday]), axis=-1)
-                # tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
+                tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
             if self.num_of_weeks and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
-                # tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
+                tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
 
             new_x_set[i] = tmp
 
@@ -168,7 +168,7 @@ class DataLoader:
 
             # target = np.concatenate((target[:, :, 0:1], hr_idx_target, wk_dy_idx_target), axis=2)
             all_samples.append(sample)
-            all_targets.append(target[:, :, 0:1])
+            all_targets.append(target[:, :, [0, 3]])
 
         split_line1 = int(len(all_samples) * 0.6)
         split_line2 = int(len(all_samples) * 0.8)
@@ -196,11 +196,11 @@ class DataLoader:
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
-            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set), axis=1)
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], training_y_set), axis=1)
         validation_y_set = np.concatenate(
-            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set), axis=1)
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], validation_y_set), axis=1)
         testing_y_set = np.concatenate(
-            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set), axis=1)
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:2], testing_y_set), axis=1)
 
         # max-min normalization on input and target values
         (stats_x, x_train, x_val, x_test) = min_max_normalize(training_x_set, validation_x_set, testing_x_set)
@@ -267,9 +267,9 @@ class DataLoader:
         edge_index = np.array(semantic_edge_details[0])
         edge_attr = np.array(semantic_edge_details[1])
 
-        edge_index_np = edge_index.reshape((2, -1, 10))[:, :, :self.semantic_threashold].reshape(2, -1)
+        edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threashold].reshape(2, -1)
         edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
-        edge_attr = edge_attr.reshape((-1, 10))[:, :self.semantic_threashold].reshape(-1, 1)
+        edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threashold].reshape(-1, 1)
 
         return [edge_index, edge_attr]
 
@@ -283,30 +283,27 @@ class DataLoader:
         ys = ys[offset: limit]
 
         # ys_input will be used as decoder inputs while ys will be used as ground truth data
-        ys_input = np.copy(ys)
+        ys_input = np.copy(ys[:, :, :, 0:1])
         ys = ys[:, :, :, 0:1]
         if _type != 'train':
             ys_input[:, self.dec_seq_offset:, :, 0:1] = 0
 
-        # reshaping
-        xs_shp = xs.shape
-        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, 1))
-
-        num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
+        num_inner_f_enc = 3
         enc_xs = []
         for k in range(self.enc_features):
             batched_xs = [[] for i in range(self.batch_size)]
 
             for idx, x_timesteps in enumerate(xs):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
-                for inner_f in range(num_inner_f_enc):
-                    start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
-                    end_idx = start_idx + 1
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
 
-                    tmp_xs_start_idx = seq_len * inner_f
-                    tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
+                lst_wk = np.concatenate((x_timesteps[:, :, 4:5], x_timesteps[:, :, 10:11]), axis=-1)
+                lst_dy = np.concatenate((x_timesteps[:, :, 2:3], x_timesteps[:, :, 8:9]), axis=-1)
+                lst_hr = np.concatenate((x_timesteps[:, :, 0:1], x_timesteps[:, :, 6:7]), axis=-1)
+
+                tmp_xs[:12] = lst_wk
+                tmp_xs[12:24] = lst_dy
+                tmp_xs[24:36] = lst_hr
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
 
