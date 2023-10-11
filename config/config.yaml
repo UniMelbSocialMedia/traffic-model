@@ -3,8 +3,8 @@ model:
   batch_size: 8
   train_epochs: 60
   finetune_epochs: 24
-  model_output_path: "output/model/pems-bay/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "output/model/pems-bay/multi-cross-attn/epoch_v1_88_model.pt"
+  model_output_path: "/data/gpfs/projects/punim2030/output/model/pems-bay/multi-cross-attn/epoch_v1_{}_model.pt"
+  model_input_path: "/data/gpfs/projects/punim2030/output/model/pems-bay/multi-cross-attn/epoch_v1_88_model.pt"
   load_saved_model: False
   device: cuda
   transformer:
@@ -82,20 +82,20 @@ model:
 
 # Data Configs
 data:
-  edge_weight_filename: "data/PEMS-BAY/adj_dis.pkl"
-  edge_weight_original_filename: "data/PEMS-BAY/adj_METR-LA.pkl"
-  semantic_adj_filename: "data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
+  edge_weight_filename: "/data/gpfs/projects/punim2030/data/PEMS-BAY/adj_dis.pkl"
+  edge_weight_original_filename: "/data/gpfs/projects/punim2030/data/PEMS-BAY/adj_METR-LA.pkl"
+  semantic_adj_filename: "/data/gpfs/projects/punim2030/data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
   edge_weight_scaling: True
-  node_data_filename: "data/PEMS-BAY/PEMS-BAY.csv"
+  node_data_filename: "/data/gpfs/projects/punim2030/data/PEMS-BAY/PEMS-BAY.csv"
   num_of_vertices: 325
   points_per_hour: 12
   len_input: 12
   last_week: True
   last_day: True
   num_days_per_week: 7
-  rep_vector_filename: "data/PEMS-BAY/PEMS-BAY_rep_vector.pickle"
+  rep_vector_filename: "/data/gpfs/projects/punim2030/data/PEMS-BAY/PEMS-BAY_rep_vector.pickle"
   rep_vectors: True
   preprocess: True
-  preprocess_output_path: "data/PEMS-BAY/PEMS-BAY_Preprocessed.pickle"
+  preprocess_output_path: "/data/gpfs/projects/punim2030/data/PEMS-BAY/PEMS-BAY_Preprocessed.pickle"
   distance_threshold: 2.5
-  semantic_threshold: 5
+  semantic_threshold: 10
