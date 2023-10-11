@@ -166,8 +166,15 @@ if __name__ == '__main__':
     # with open(time_idx_rep_output_file, 'wb') as file:
     #     pickle.dump(semantic_rels, file)
 
-    edge_details = set_edge_semantics(time_idx_rep_output_file)
-    with open(edge_details_file, 'wb') as file:
-        pickle.dump(edge_details, file)
+    # edge_details = set_edge_semantics(time_idx_rep_output_file)
+    # with open(edge_details_file, 'wb') as file:
+    #     pickle.dump(edge_details, file)
 
+    edge_details_file_1 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_1.pickle"
+    edge_details_file_2 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_2.pickle"
 
+    output_file_1 = open(edge_details_file_1, 'rb')
+    edge_index_1, edge_attr_1 = pickle.load(output_file_1)
+
+    output_file_2 = open(edge_details_file_2, 'rb')
+    edge_index_2, edge_attr_2 = pickle.load(output_file_2)
