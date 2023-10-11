@@ -32,21 +32,6 @@ class TransformerEncoder(nn.Module):
         self.graph_semantic_input = configs['graph_semantic_input']
         self.seq_len = configs['seq_len']
 
-        # semantic graph related
-        self.num_of_weeks = configs['num_of_weeks']
-        self.num_of_days = configs['num_of_days']
-        self.basic_input_len = configs['basic_input_len']
-        self.day_slot = configs['points_per_hour'] * 24
-        self.total_time_idx = configs['num_days_per_week'] * self.day_slot
-        self.last_week_end = -1
-        self.last_day_end = -1
-        if self.num_of_weeks:
-            self.last_week_end = self.basic_input_len
-        if self.num_of_weeks and self.num_of_days:
-            self.last_day_end = self.basic_input_len * 2
-        if not self.num_of_weeks and self.num_of_days:
-            self.last_day_end = self.basic_input_len
-
         n_layers = configs['n_layers']
 
         # embedding
@@ -112,16 +97,6 @@ class TransformerEncoder(nn.Module):
             if self.graph_semantic_input:
                 graph_semantic = self._create_graph((x_src, x_src), semantic_edge_index, semantic_edge_attr)
                 x_batch_graphs_semantic.append(to(graph_semantic))
-
-            # if self.graph_semantic_input:
-            #     if self.last_week_end != -1 and i < self.last_week_end:
-            #         graph_semantic = self._create_graph((x_src, x), semantic_edge_index_hr, semantic_edge_attr_hr)
-            #     elif self.last_day_end != -1 and i < self.last_day_end:
-            #         graph_semantic = self._create_graph((x_src, x), semantic_edge_index_lst_dy,
-            #                                             semantic_edge_attr_lst_dy)
-            #     else:
-            #         graph_semantic = self._create_graph((x_src, x), semantic_edge_index_hr, semantic_edge_attr_hr)
-            #     graphs_semantic.append(to(graph_semantic))
 
         return x_batch_graphs, x_batch_graphs_semantic
 
