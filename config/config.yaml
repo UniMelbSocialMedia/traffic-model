@@ -2,10 +2,10 @@
 model:
   batch_size: 4
   train_epochs: 60
-  finetune_epochs: 24
+  finetune_epochs: 10
   model_output_path: "/data/gpfs/projects/punim2030/output/model/pems08/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "/data/gpfs/projects/punim2030/output/model/pems08/multi-cross-attn/epoch_v1_7_model.pt"
-  load_saved_model: False
+  model_input_path: "/data/gpfs/projects/punim2030/output/model/pems08/multi-cross-attn/epoch_v1_58_model.pt"
+  load_saved_model: True
   device: cuda
   transformer:
     encoder:
@@ -19,27 +19,28 @@ model:
       local_trends: True
       graph_semantic_input: True
       graph_input: True
-      dropout_e: 0.0
+      dropout_e_normal: 0.0
+      dropout_e_rep: 0.2
       encoder_block:
         n_heads: 8
         expansion_factor: 4
-        src_dropout: 0.1
-        ff_dropout: 0.1
+        src_dropout: 0.2
+        ff_dropout: 0.2
       sgat_normal:
         first_in_f_size: 576
         n_layers: 1
-        out_f_sizes: [ 64, 576 ]
+        out_f_sizes: [ 64 ]
         n_heads: [ 8, 1 ]
         alpha: 0.2
-        dropout: 0.4
-        dropout_g_dis: 0.4
-        dropout_g_sem: 0.4
+        dropout: 0.6
+        dropout_g_dis: 0.6
+        dropout_g_sem: 0.6
         edge_dim: 1
         skip_conn: False
       sgat_rep:
         first_in_f_size: 576
         n_layers: 1
-        out_f_sizes: [ 64, 576 ]
+        out_f_sizes: [ 64 ]
         n_heads: [ 8, 1 ]
         alpha: 0.2
         dropout: 0.7
@@ -66,18 +67,9 @@ model:
         n_heads: 8
         expansion_factor: 4
         cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder
-        src_dropout: 0.1
-        cross_attn_dropout: [0.1, 0.3]
+        src_dropout: 0.2
+        cross_attn_dropout: [0.2, 0.3]
         ff_dropout: 0.2
-      sgat:
-        first_in_f_size: 208
-        n_layers: 1
-        out_f_sizes: [ 208, 208 ]
-        n_heads: [ 4, 1 ]
-        alpha: 0.2
-        dropout: 0.7
-        edge_dim: 1
-        skip_conn: False
     lookup_index: True
 
 # Data Configs
@@ -100,5 +92,5 @@ data:
   rep_vector_filename: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_rep_vector.pickle"
   preprocess: False
   preprocess_output_path: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_Preprocessed.pickle"
-  distance_threshold: 3000
+  distance_threshold: 1500
   semantic_threashold: 10
