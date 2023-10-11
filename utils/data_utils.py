@@ -1,4 +1,5 @@
 import numpy as np
+import pickle
 
 from utils.math_utils import normalize
 
@@ -79,7 +80,7 @@ def attach_prev_dys_seq(seq: np.array, n_his: int, day_slots: int, num_days_per_
     return np.array(seq_output)
 
 
-def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: int):
+def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: int, load_file=True, output_filename= None):
     """
     For every data point per week, we derive a representation time series.
 
@@ -93,6 +94,12 @@ def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: 
     -------
     records_time_idx: set of representation vectors per each data point in a week
     """
+
+    if load_file:
+        output_file = open(output_filename, 'rb')
+        records_time_idx = pickle.load(output_file)
+        return records_time_idx
+
     training_size = x_set.shape[0]
     num_weeks_training = int(training_size / points_per_week)
     seq_len = x_set.shape[1]
@@ -100,33 +107,25 @@ def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: 
     records_time_idx = {}
 
     for time_idx in range(points_per_week):
+        # x and y values representation vectors
         record = [x_set[time_idx]]
 
-        # WARNING: Make sure what index holds the weekly time index. This may be subjected to changes.
-        # For now, it's 1. (Appended after the speed value)
         record_key = record[0][0, 0, 1]
-
-        # Get all records which has the same weekly time index
         for week in range(1, num_weeks_training + 1):
             idx = time_idx + points_per_week * week
             if idx >= training_size: continue
 
             record.append(x_set[idx])
 
-        # Derive sensor-wise rep vector for the given weekly time index
         sensor_means = []
         for sensor in range(num_of_vertices):
             sensor_data = np.array(record)[:, :, sensor, 0]
             n_samples = sensor_data.shape[0]
 
             mean_ts = []
-            # For weekly time index and each sensor, we derive mean for each time step of the input sequence
             for t in range(seq_len):
                 sensor_t = sensor_data[:, t]
 
-                # Sometimes sensors contain sudden zeros (noise). Those values removed when deriving the mean
-                # If a particular timestep always has values below 10, zeros in that timestep are not considered
-                # as noises.
                 less_ten = (sensor_t < 10).sum()
                 if n_samples == less_ten:
                     mean_ts.append(np.mean(sensor_data[:, t]))
@@ -138,6 +137,10 @@ def derive_rep_timeline(x_set: np.array, points_per_week: int, num_of_vertices: 
             sensor_means.append(mean)
 
         records_time_idx[record_key] = np.array(sensor_means).transpose(1, 0, 2)
+
+    if output_filename is not None:
+        with open(output_filename, 'wb') as file:
+            pickle.dump(records_time_idx, file)
 
     return records_time_idx
 
@@ -188,9 +191,9 @@ def search_index(max_len, num_of_depend=1, num_for_predict=12, points_per_hour=1
     return x_idx
 
 
-def create_lookup_index(last_week=True, last_dy=True, dec_seq_offset=0, dec_seq_len=12):
+def create_lookup_index(last_week=True, last_dy=True, dec_seq_offset=0, dec_seq_len=12, days_per_week=7):
     wk_lookup_idx = search_index(max_len=0,
-                                 units=24 * 7,
+                                 units=24 * days_per_week,
                                  offset=0)
     dy_lookup_idx = search_index(max_len=0,
                                  units=24,
