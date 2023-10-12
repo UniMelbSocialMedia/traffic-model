@@ -119,73 +119,73 @@ if __name__ == '__main__':
     rep_output_file = "../data/PEMS-BAY/PEMS-BAY_rep_vector.pickle"
     time_idx_rep_output_file = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_rels.pickle"
     edge_details_file = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
-    # records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=True)
+    records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=True)
 
-    # n_sensors = 325
-    # semantic_rels = {}
-    #
-    # for sensor in range(0, 100):
-    #     time_idx_distances = []
-    #     time_idx_sensors = []
-    #
-    #     for time_idx in range(2016):
-    #         sensor_seq = records_time_idx[time_idx][:, sensor]
-    #         alignment_details = []
-    #         distances = []
-    #         sensor_js = []
-    #
-    #         for sensor_j in range(325):
-    #             if sensor_j == sensor: continue
-    #             sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
-    #
-    #             try:
-    #                 alignment = dtw(sensor_seq, sensor_seq_j, window_type="sakoechiba", window_args={'window_size': 3})
-    #                 alignment_details.append(alignment)
-    #                 distances.append(alignment.distance)
-    #                 sensor_js.append(sensor_j)
-    #             except ValueError as ex:
-    #                 print(ex)
-    #
-    #         min_indices = np.argpartition(distances, 10)[:10]
-    #         sorted_distances = np.array(distances)[min_indices]
-    #         sorted_sensors = np.array(sensor_js)[min_indices]
-    #         time_idx_distances.append(sorted_distances)
-    #         time_idx_sensors.append(sorted_sensors)
-    #
-    #     time_idx_sensors = np.array(time_idx_sensors).flatten()
-    #     time_idx_distances = np.array(time_idx_distances).flatten()
-    #     top_similar_sensors = find_most_similar_sensors(time_idx_sensors)
-    #
-    #     avg_distances = {}
-    #     for s, i in top_similar_sensors.items():
-    #         avg_distances[s] = np.mean(time_idx_distances[i])
-    #
-    #     semantic_rels[sensor] = avg_distances
-    #     print(f"Sensor: {sensor} done")
-    #
-    # with open(time_idx_rep_output_file, 'wb') as file:
-    #     pickle.dump(semantic_rels, file)
+    n_sensors = 325
+    semantic_rels = {}
 
-    # edge_details = set_edge_semantics(time_idx_rep_output_file)
-    # with open(edge_details_file, 'wb') as file:
-    #     pickle.dump(edge_details, file)
+    for sensor in range(0, 100):
+        time_idx_distances = []
+        time_idx_sensors = []
 
-    edge_details_file_1 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_1.pickle"
-    edge_details_file_2 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_2.pickle"
+        for time_idx in range(2016):
+            sensor_seq = records_time_idx[time_idx][:, sensor]
+            alignment_details = []
+            distances = []
+            sensor_js = []
 
-    output_file_1 = open(edge_details_file_1, 'rb')
-    edge_index_1, edge_attr_1 = pickle.load(output_file_1)
+            for sensor_j in range(325):
+                if sensor_j == sensor: continue
+                sensor_seq_j = records_time_idx[time_idx][:, sensor_j]
 
-    output_file_2 = open(edge_details_file_2, 'rb')
-    edge_index_2, edge_attr_2 = pickle.load(output_file_2)
+                try:
+                    alignment = dtw(sensor_seq, sensor_seq_j, window_type="sakoechiba", window_args={'window_size': 3})
+                    alignment_details.append(alignment)
+                    distances.append(alignment.distance)
+                    sensor_js.append(sensor_j)
+                except ValueError as ex:
+                    print(ex)
 
-    edge_index_0 = edge_index_1[0] + edge_index_2[0]
-    edge_index_1 = edge_index_1[1] + edge_index_2[1]
-    edge_index = [edge_index_0, edge_index_1]
+            min_indices = np.argpartition(distances, 10)[:10]
+            sorted_distances = np.array(distances)[min_indices]
+            sorted_sensors = np.array(sensor_js)[min_indices]
+            time_idx_distances.append(sorted_distances)
+            time_idx_sensors.append(sorted_sensors)
 
-    edge_attr = np.concatenate((edge_attr_1, edge_attr_2), axis=0)
-    edge_details = (edge_index, edge_attr)
+        time_idx_sensors = np.array(time_idx_sensors).flatten()
+        time_idx_distances = np.array(time_idx_distances).flatten()
+        top_similar_sensors = find_most_similar_sensors(time_idx_sensors)
 
-    edge_details_file = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
+        avg_distances = {}
+        for s, i in top_similar_sensors.items():
+            avg_distances[s] = np.mean(time_idx_distances[i])
+
+        semantic_rels[sensor] = avg_distances
+        print(f"Sensor: {sensor} done")
+
+    with open(time_idx_rep_output_file, 'wb') as file:
+        pickle.dump(semantic_rels, file)
+
+    edge_details = set_edge_semantics(time_idx_rep_output_file)
     with open(edge_details_file, 'wb') as file:
         pickle.dump(edge_details, file)
+
+    # edge_details_file_1 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_1.pickle"
+    # edge_details_file_2 = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges_2.pickle"
+    #
+    # output_file_1 = open(edge_details_file_1, 'rb')
+    # edge_index_1, edge_attr_1 = pickle.load(output_file_1)
+    #
+    # output_file_2 = open(edge_details_file_2, 'rb')
+    # edge_index_2, edge_attr_2 = pickle.load(output_file_2)
+    #
+    # edge_index_0 = edge_index_1[0] + edge_index_2[0]
+    # edge_index_1 = edge_index_1[1] + edge_index_2[1]
+    # edge_index = [edge_index_0, edge_index_1]
+    #
+    # edge_attr = np.concatenate((edge_attr_1, edge_attr_2), axis=0)
+    # edge_details = (edge_index, edge_attr)
+    #
+    # edge_details_file = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
+    # with open(edge_details_file, 'wb') as file:
+    #     pickle.dump(edge_details, file)
