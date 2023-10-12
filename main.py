@@ -9,7 +9,7 @@ from test import test
 from train import train
 from utils.data_utils import create_lookup_index
 from utils.logger import logger
-from utils.masked_mae_loss import Masked_MAE_Loss
+from utils.loss_func import Masked_MAE_Loss, Huber_Loss
 
 
 def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):

@@ -170,11 +170,11 @@ class DataLoader:
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
-            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set), axis=1)
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 0:1]), axis=1)
         validation_y_set = np.concatenate(
-            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set), axis=1)
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 0:1]), axis=1)
         testing_y_set = np.concatenate(
-            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set), axis=1)
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
 
         # z-score normalization on input and target values
         stats_x, x_train, x_val, x_test = z_score_normalize(training_x_set, validation_x_set, testing_x_set)
@@ -233,17 +233,16 @@ class DataLoader:
         return edge_index, edge_attr
 
     def load_semantic_edge_data_file(self):
-        # semantic_file = open(self.semantic_adj_filename, 'rb')
-        # semantic_edge_details = pickle.load(semantic_file)
-        #
-        # edge_index = np.array(semantic_edge_details[0])
-        # edge_attr = np.array(semantic_edge_details[1])
-        #
-        # edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threshold].reshape(2, -1)
-        # edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
-        # edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threshold].reshape(-1, 1)
-        edge_index = []
-        edge_attr = []
+        semantic_file = open(self.semantic_adj_filename, 'rb')
+        semantic_edge_details = pickle.load(semantic_file)
+
+        edge_index = np.array(semantic_edge_details[0])
+        edge_attr = np.array(semantic_edge_details[1])
+
+        edge_index_np = edge_index.reshape((2, -1, 10))[:, :, :self.semantic_threshold].reshape(2, -1)
+        edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
+        edge_attr = edge_attr.reshape((-1, 10))[:, :self.semantic_threshold].reshape(-1, 1)
+
         return [edge_index, edge_attr]
 
     def load_batch(self, _type: str, offset: int, device: str = 'cpu'):
