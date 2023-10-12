@@ -155,7 +155,7 @@ class DataLoader:
             records_time_idx = derive_rep_timeline(training_x_set,
                                                    self.day_slot * self.num_days_per_week,
                                                    self.num_of_vertices,
-                                                   load_file=True,
+                                                   load_file=False,
                                                    output_filename=self.rep_vector_filename)
 
         training_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
