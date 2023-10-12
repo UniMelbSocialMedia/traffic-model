@@ -178,3 +178,14 @@ if __name__ == '__main__':
 
     output_file_2 = open(edge_details_file_2, 'rb')
     edge_index_2, edge_attr_2 = pickle.load(output_file_2)
+
+    edge_index_0 = edge_index_1[0] + edge_index_2[0]
+    edge_index_1 = edge_index_1[1] + edge_index_2[1]
+    edge_index = [edge_index_0, edge_index_1]
+
+    edge_attr = np.concatenate((edge_attr_1, edge_attr_2), axis=0)
+    edge_details = (edge_index, edge_attr)
+
+    edge_details_file = "../data/PEMS-BAY/PEMS-BAY_time_idx_semantic_edges.pickle"
+    with open(edge_details_file, 'wb') as file:
+        pickle.dump(edge_details, file)
