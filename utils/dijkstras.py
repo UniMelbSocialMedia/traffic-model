@@ -27,16 +27,11 @@ def dijkstra(graph, start):
     return distances
 
 
-def load_adj(filename, num_of_vertices):
+def load_adj(filename):
     try:
-        w = pd.read_csv(filename, header=None).values[1:]
-
-        adj = np.zeros((num_of_vertices, num_of_vertices))
-        for row in range(w.shape[0]):
-            adj[int(w[row][0])][int(w[row][1])] = float(w[row][2])
-            adj[int(w[row][1])][int(w[row][0])] = float(w[row][2])
-
-        return adj
+        adj_file = open(filename, 'rb')
+        adj_mx = pd.read_pickle(adj_file)[2]
+        return adj_mx
 
     except FileNotFoundError:
         print(f'ERROR: input file was not found in {filename}.')
@@ -48,11 +43,11 @@ if __name__ == '__main__':
         configs = yaml.safe_load(stream)
 
     data_configs = configs['data']
-    edge_filename = data_configs['edge_weight_filename']
-    adj = load_adj(f'../{edge_filename}', data_configs['num_of_vertices'])
+    edge_filename = 'data/PEMS-BAY/adj_PEMS-BAY.pkl'
+    adj = load_adj(f'../{edge_filename}')
 
     # Output shortest distances
-    output_filename = "../data/PEMS04/PEMS04_dij.csv"
+    output_filename = "../data/PEMS-BAY/PEMS-BAY_dij.csv"
     columns = ['from', 'to', 'distance']
     df = pd.DataFrame(columns=columns)
 
