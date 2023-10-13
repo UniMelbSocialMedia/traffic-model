@@ -31,21 +31,6 @@ class TransformerEncoder(nn.Module):
         self.graph_semantic_input = configs['graph_semantic_input']
         self.seq_len = configs['seq_len']
 
-        # semantic graph related
-        self.num_of_weeks = configs['num_of_weeks']
-        self.num_of_days = configs['num_of_days']
-        self.basic_input_len = configs['basic_input_len']
-        self.day_slot = configs['points_per_hour'] * 24
-        self.total_time_idx = configs['num_days_per_week'] * self.day_slot
-        self.last_week_end = -1
-        self.last_day_end = -1
-        if self.num_of_weeks:
-            self.last_week_end = self.basic_input_len
-        if self.num_of_weeks and self.num_of_days:
-            self.last_day_end = self.basic_input_len * 2
-        if not self.num_of_weeks and self.num_of_days:
-            self.last_day_end = self.basic_input_len
-
         n_layers = configs['n_layers']
 
         # embedding
@@ -77,13 +62,13 @@ class TransformerEncoder(nn.Module):
         # by merging embeddings we increase the output dimension
         if self.merge_emb:
             self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 4)
+        self.out_norm = nn.LayerNorm(self.emb_dim)
 
-        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
+        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim)
         self.dropout_e = nn.Dropout(dropout_e)
 
     def _create_graph(self, x, edge_index, edge_attr):
-        graph = data.Data(x=(Tensor(x[0]), Tensor(x[1])),
+        graph = data.Data(x=(Tensor(x)),
                           edge_index=torch.LongTensor(edge_index),
                           y=None,
                           edge_attr=Tensor(edge_attr))
@@ -100,11 +85,11 @@ class TransformerEncoder(nn.Module):
             x_src = x_src.reshape(x_src.shape[0], -1)  # N, T*F
 
             if self.graph_input:
-                graph = self._create_graph((x_src, x_src), self.edge_index, self.edge_attr)
+                graph = self._create_graph(x_src, self.edge_index, self.edge_attr)
                 x_batch_graphs.append(to(graph))
 
             if self.graph_semantic_input:
-                graph_semantic = self._create_graph((x_src, x_src), semantic_edge_index, semantic_edge_attr)
+                graph_semantic = self._create_graph(x_src, semantic_edge_index, semantic_edge_attr)
                 x_batch_graphs_semantic.append(to(graph_semantic))
 
             # if self.graph_semantic_input:
@@ -148,16 +133,17 @@ class TransformerEncoder(nn.Module):
             graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
             graph_x = graph_x.permute(0, 2, 1, 3)
             graph_x_shp = graph_x.shape
-            out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
+            batch_size, time_steps, num_nodes, features = graph_x_shp
 
+            out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
             if self.graph_input:
-                batch_size, time_steps, num_nodes, features = graph_x_shp
                 out_g_dis = self.graph_embedding(out_g_dis)  # (4, 307, 576)
-                # out_g_dis = out_g_dis.reshape(batch_size, num_nodes, time_steps, -1)  # (4, 307, 12, 16)
-                # out_g_dis = out_g_dis.permute(0, 2, 1, 3)  # (4, 12, 307, 16)
+                out_g_dis = out_g_dis.reshape(batch_size, num_nodes, time_steps, -1)  # (4, 307, 12, 16)
+                out_g_dis = out_g_dis.permute(0, 2, 1, 3)  # (4, 12, 307, 16)
             if self.graph_semantic_input:
                 out_g_semantic = self.graph_embedding_semantic(out_g_semantic)
-
+                out_g_semantic = out_g_semantic.reshape(batch_size, num_nodes, time_steps, -1)  # (4, 307, 12, 16)
+                out_g_semantic = out_g_semantic.permute(0, 2, 1, 3)  # (4, 12, 307, 16)
             if self.graph_input and self.graph_semantic_input:
                 out_g = self.out_norm(out_g_dis + out_g_semantic)
             elif self.graph_input and not self.graph_semantic_input:
