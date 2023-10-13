@@ -42,9 +42,11 @@ class TransformerEncoder(nn.Module):
         configs['sgat']['seq_len'] = self.seq_len
 
         configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
-        self.graph_embedding_dis = SGATEmbedding(configs['sgat'])
+        if self.graph_input:
+            self.graph_embedding_dis = SGATEmbedding(configs['sgat'])
         configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_sem']
-        self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
+        if self.graph_semantic_input:
+            self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
 
         # convolution related
         self.local_trends = configs['local_trends']
@@ -146,7 +148,7 @@ class TransformerEncoder(nn.Module):
             elif not self.graph_input and self.graph_semantic_input:
                 out_g = out_g_semantic
             elif not self.graph_input and not self.graph_semantic_input:
-                out_e = self.dropout_e(self.out_e_lin(out_e))
+                out_e = self.dropout_e_normal(self.out_e_lin(out_e))
                 return out_e
 
             out = self.dropout_e_normal(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
