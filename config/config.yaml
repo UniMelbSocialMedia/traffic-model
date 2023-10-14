@@ -3,8 +3,8 @@ model:
   batch_size: 4
   train_epochs: 60
   finetune_epochs: 10
-  model_output_path: "output/model/pems08/multi-cross-attn/epoch_v1_{}_model.pt"
-  model_input_path: "output/model/pems08/multi-cross-attn/epoch_v1_58_model.pt"
+  model_output_path: "/data/gpfs/projects/punim2030/output/model/pems08/multi-cross-attn/epoch_v1_{}_model.pt"
+  model_input_path: "/data/gpfs/projects/punim2030/output/model/pems08/multi-cross-attn/epoch_v1_58_model.pt"
   load_saved_model: False
   device: cuda
   transformer:
@@ -29,7 +29,7 @@ model:
       sgat_normal:
         first_in_f_size: 576
         n_layers: 1
-        out_f_sizes: [ 64 ]
+        out_f_sizes: [ 576 ]
         n_heads: [ 8, 1 ]
         alpha: 0.2
         dropout: 0.6
@@ -40,7 +40,7 @@ model:
       sgat_rep:
         first_in_f_size: 576
         n_layers: 1
-        out_f_sizes: [ 64 ]
+        out_f_sizes: [ 576 ]
         n_heads: [ 8, 1 ]
         alpha: 0.2
         dropout: 0.7
@@ -49,7 +49,7 @@ model:
         edge_dim: 1
         skip_conn: False
     decoder:
-      emb_dim: 64
+      emb_dim: 16
       seq_len: 13
       seq_offset: 1 # Indicates how many timesteps in the previous hour consider as inputs in the decoder
       input_dim: 1
@@ -74,10 +74,10 @@ model:
 
 # Data Configs
 data:
-  edge_weight_filename: "data/PEMS08/PEMS08_dij.csv"
-  semantic_adj_filename: "data/PEMS08/PEMS08_time_idx_semantic_edges.pickle"
+  edge_weight_filename: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_dij.csv"
+  semantic_adj_filename: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_time_idx_semantic_edges.pickle"
   edge_weight_scaling: True
-  node_data_filename: "data/PEMS08/PEMS08.npz"
+  node_data_filename: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08.npz"
   num_of_vertices: 170
   points_per_hour: 12
   len_input: 12
@@ -89,8 +89,8 @@ data:
   num_of_weeks_target: 0
   num_days_per_week: 7
   rep_vectors: True
-  rep_vector_filename: "data/PEMS08/PEMS08_rep_vector.pickle"
+  rep_vector_filename: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_rep_vector.pickle"
   preprocess: False
-  preprocess_output_path: "data/PEMS08/PEMS08_Preprocessed.pickle"
+  preprocess_output_path: "/data/gpfs/projects/punim2030/data/PEMS08/PEMS08_Preprocessed.pickle"
   distance_threshold: 1500
   semantic_threashold: 10

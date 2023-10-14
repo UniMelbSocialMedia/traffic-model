@@ -37,17 +37,10 @@ class GAT(nn.Module):
         out = ()
         for data in batch_data:
             x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
-            x_shp = x[0].size()
 
             for l, gat_layer in enumerate(self.layer_stack):
-                x1 = F.dropout(x[0], p=self.dropout, training=self.training)
-                x2 = F.dropout(x[1], p=self.dropout, training=self.training)
-                x = [x1, x2]
+                x = F.dropout(x, p=self.dropout, training=self.training)
                 x = gat_layer(x, edge_attr=edge_attr, edge_index=edge_index)
-                x = x.reshape(x_shp[0], self.seq_len, self.out_f_sizes[-1])  # 307, 36, 288
-                # x = self.lin(x)
-                x = x.permute(1, 0, 2)  # 36, 307, 288
-
                 if l < (self.n_layers - 1):
                     x = F.elu(x)
 

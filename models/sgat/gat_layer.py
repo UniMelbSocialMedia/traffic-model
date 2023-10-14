@@ -16,11 +16,11 @@ class GATLayer(nn.Module):
         self.seq_len = seq_len
 
         if edge_dim == -1:
-            self.conv = GATConvV8([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
-                                  concat=concat, seq_len=seq_len)
+            self.conv = GATv2Conv([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
+                                  concat=concat)
         else:
-            self.conv = GATConvV8([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
-                                  concat=concat, edge_dim=edge_dim, seq_len=seq_len)
+            self.conv = GATv2Conv([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
+                                  concat=concat, edge_dim=edge_dim)
 
     def forward(self, x, edge_index, edge_attr=None):
         x = self.conv(x, edge_index, edge_attr)
