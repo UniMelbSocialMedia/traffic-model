@@ -128,6 +128,6 @@ class TransformerDecoder(nn.Module):
                     enc_xs.append(
                         f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
-            out_d = layer(out_d, enc_xs, tgt_mask)
+            out_d = layer(out_d, enc_xs, tgt_mask, device)
 
         return self._return_mat(out_d, embed_shp)

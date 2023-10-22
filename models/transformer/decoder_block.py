@@ -33,7 +33,7 @@ class DecoderBlock(nn.Module):
         self.norm3 = nn.LayerNorm(emb_dim)
         self.dropout2 = nn.Dropout(ff_dropout)
 
-    def forward(self, x, enc_x, tgt_mask):
+    def forward(self, x, enc_x, tgt_mask, device):
         # self attention
         attention = self.self_attention(x, x, x, attn_mask=tgt_mask)  # 32x10x512
         x = self.norm1(x + self.dropout1(attention[0]))
@@ -46,7 +46,7 @@ class DecoderBlock(nn.Module):
             else:
                 cross_attn.append(layer(x, enc_x[idx], enc_x[idx]))
 
-        cross_attn = self.timestep_attention(cross_attn)
+        cross_attn = self.timestep_attention(cross_attn, device)
         # enc_x = torch.concat(enc_x, dim=1)
         # cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
 
