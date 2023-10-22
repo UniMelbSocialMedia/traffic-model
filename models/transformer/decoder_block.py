@@ -4,6 +4,7 @@ from torch.nn import MultiheadAttention
 
 from models.transformer.cross_attention import CrossAttentionLayer
 from models.transformer.position_wise_feed_forward import PositionWiseFeedForward
+from models.transformer.timestep_attention import TimeStepAttention
 
 
 class DecoderBlock(nn.Module):
@@ -22,6 +23,7 @@ class DecoderBlock(nn.Module):
         self.norm1 = nn.LayerNorm(emb_dim)
         self.dropout1 = nn.Dropout(src_dropout)
 
+        self.timestep_attention = TimeStepAttention(emb_dim)
         self.cross_attn_layers = nn.ModuleList([
             CrossAttentionLayer(emb_dim, n_heads, dropout=cross_attn_dropout[i]) for i in range(cross_attn_features)
         ])
@@ -44,6 +46,7 @@ class DecoderBlock(nn.Module):
         #     else:
         #         cross_attn += layer(x, enc_x[idx], enc_x[idx])
 
+        enc_x = self.timestep_attention(enc_x)
         enc_x = torch.concat(enc_x, dim=1)
         cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
 
