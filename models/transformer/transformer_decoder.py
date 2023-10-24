@@ -26,7 +26,7 @@ class TransformerDecoder(nn.Module):
         self.seq_len = configs['seq_len']
         self.enc_features = configs['enc_features']
         self.per_enc_feature_len = configs['per_enc_feature_len']
-        self.cross_attn_features = configs['decoder_block']['cross_attn_features']
+        self.cross_attn_features = configs['decoder_block']['cross_attn_features'] - 1
 
         # embedding
         self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)

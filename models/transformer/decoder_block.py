@@ -39,7 +39,7 @@ class DecoderBlock(nn.Module):
         x = self.norm1(x + self.dropout1(attention[0]))
 
         # cross attention
-        enc_x = self.timestep_attention(enc_x, device)
+        # enc_x = self.timestep_attention(enc_x, device)
         # cross_attn = []
         # for idx, layer in enumerate(self.cross_attn_layers):
         #     if idx == 0:
@@ -47,8 +47,12 @@ class DecoderBlock(nn.Module):
         #     else:
         #         cross_attn.append(layer(x, enc_x[idx], enc_x[idx]))
 
-        enc_x = torch.concat(enc_x, dim=1)
-        cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
+        history_with_context = self.cross_attn_layers[0](enc_x[0], enc_x[1], enc_x[1])
+        x_with_context = self.cross_attn_layers[1](x, enc_x[1], enc_x[1])
+        cross_attn = self.cross_attn_layers[2](x_with_context, history_with_context, history_with_context)
+
+        # enc_x = torch.concat(enc_x, dim=1)
+        # cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
 
         x = self.norm2(x + cross_attn)
 
