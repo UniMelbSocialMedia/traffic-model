@@ -4,7 +4,7 @@ import pickle
 
 import torch
 
-from utils.data_utils import scale_weights, derive_rep_timeline, get_sample_indices
+from utils.data_utils import scale_weights, derive_rep_timeline, seq_gen_v2, attach_prev_dys_seq
 from data_loader.dataset import Dataset
 from utils.math_utils import z_score_normalize, min_max_normalize
 
@@ -19,14 +19,12 @@ class DataLoader:
         self.num_of_vertices = data_configs['num_of_vertices']
         self.points_per_hour = data_configs['points_per_hour']
         self.len_input = data_configs['len_input']
-        self.num_for_predict = data_configs['num_for_predict']
-        self.num_of_hours = data_configs['num_of_hours']
-        self.num_of_days = data_configs['num_of_days']
-        self.num_of_days = data_configs['num_of_days']
-        self.num_of_weeks = data_configs['num_of_weeks']
+        self.last_day = data_configs['last_day']
+        self.last_week = data_configs['last_week']
         self.num_of_days_target = data_configs['num_of_days_target']
         self.num_of_weeks_target = data_configs['num_of_weeks_target']
         self.num_days_per_week = data_configs['num_days_per_week']
+
         self.rep_vectors = data_configs['rep_vectors']
         self.rep_vector_filename = data_configs['rep_vector_filename']
 
@@ -53,15 +51,15 @@ class DataLoader:
         self.points_per_week = self.points_per_hour * 24 * self.num_days_per_week
 
         self.num_f = 1
-        if self.num_of_weeks:
+        if self.last_week:
             self.num_f += 1
-        if self.num_of_days:
+        if self.last_day:
             self.num_f += 1
         if self.rep_vectors:
             self.num_f += 1
-        if self.rep_vectors and self.num_of_days:
+        if self.rep_vectors and self.last_week:
             self.num_f += 1
-        if self.rep_vectors and self.num_of_weeks:
+        if self.rep_vectors and self.last_day:
             self.num_f += 1
 
     def _generate_new_x_arr(self, x_set: np.array, records_time_idx: dict):
@@ -76,10 +74,10 @@ class DataLoader:
         if self.rep_vectors:
             new_n_f += 1
         # To add rep last dy seq
-        if self.num_of_days and self.rep_vectors:
+        if self.last_day and self.rep_vectors:
             new_n_f += 1
         # To add rep last wk seq
-        if self.num_of_weeks and self.rep_vectors:
+        if self.last_week and self.rep_vectors:
             new_n_f += 1
 
         new_x_set = np.zeros((x_set.shape[0], x_set.shape[1], x_set.shape[2], new_n_f))
@@ -89,19 +87,19 @@ class DataLoader:
             record_key_yesterday = x[0, 0, 3]
 
             tmp = x[:, :, speed_idx:speed_idx + 1]
-            if self.num_of_days:
+            if self.last_day:
                 last_dy_data = x[:, :, last_dy_idx:last_dy_idx + 1]
                 tmp = np.concatenate((tmp, last_dy_data), axis=-1)
-            if self.num_of_weeks:
+            if self.last_week:
                 last_wk_data = x[:, :, last_wk_idx:last_wk_idx + 1]
                 tmp = np.concatenate((tmp, last_wk_data), axis=-1)
             if self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
                 # tmp = np.concatenate((tmp, x[:, :, speed_idx + 1:speed_idx + 2]), axis=-1)
-            if self.num_of_days and self.rep_vectors:
+            if self.last_day and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key_yesterday]), axis=-1)
                 # tmp = np.concatenate((tmp, x[:, :, last_dy_idx + 1:last_dy_idx + 2]), axis=-1)
-            if self.num_of_weeks and self.rep_vectors:
+            if self.last_week and self.rep_vectors:
                 tmp = np.concatenate((tmp, records_time_idx[record_key]), axis=-1)
                 # tmp = np.concatenate((tmp, x[:, :, last_wk_idx + 1:last_wk_idx + 2]), axis=-1)
 
@@ -116,79 +114,56 @@ class DataLoader:
             self.dataset = pickle.load(preprocessed_file)
             return
 
-        data_seq = np.load(self.node_data_filename)['data']  # (sequence_length, num_of_vertices, num_of_features)
+        data_seq = pd.read_csv(self.node_data_filename).values
+        data_seq = data_seq[:, 1:]
+        data_seq = np.expand_dims(data_seq, axis=-1)
 
-        all_samples = []
-        all_targets = []
-
-        new_data_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
-        points_per_week = self.points_per_hour * 24 * 7
-
+        new_seq = np.zeros((data_seq.shape[0], data_seq.shape[1], data_seq.shape[2] + 1))
         for idx in range(data_seq.shape[0]):
-            time_idx = np.array(idx % points_per_week)
-            new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=1)
-            new_data_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
+            time_idx = np.array(idx % self.points_per_week)
+            new_arr = np.expand_dims(np.repeat(time_idx, self.num_of_vertices, axis=0), axis=-1)
+            new_seq[idx] = np.concatenate((data_seq[idx], new_arr), axis=-1)
 
-        for idx in range(new_data_seq.shape[0]):
-            sample = get_sample_indices(new_data_seq, self.num_of_weeks,
-                                        self.num_of_days,
-                                        self.num_of_hours,
-                                        idx,
-                                        self.num_for_predict,
-                                        self.points_per_hour,
-                                        num_of_days_target=self.num_of_days_target,
-                                        num_of_weeks_target=self.num_of_weeks_target)
-            if (sample[0] is None) and (sample[1] is None) and (sample[2] is None):
-                continue
+        n_records = len(new_seq)
+        self.n_train = int(n_records * 0.7)
+        self.n_test = int(n_records * 0.2)
+        self.n_val = int(n_records * 0.1)
 
-            week_sample, day_sample, hour_sample, target, wk_dys, hrs, week_sample_target, day_sample_target = sample
+        seq_train = seq_gen_v2(self.n_train, new_seq[:self.n_train], self.n_seq, self.num_of_vertices, 2)
+        seq_val = seq_gen_v2(self.n_val, new_seq[self.n_train:self.n_train + self.n_val], self.n_seq,
+                             self.num_of_vertices, 2)
+        seq_test = seq_gen_v2(self.n_test, new_seq[-1 * self.n_test:], self.n_seq, self.num_of_vertices, 2)
 
-            time_idx_sample = np.repeat(np.expand_dims(new_data_seq[idx, :, -1:], axis=0), self.len_input, axis=0)
-
-            sample = None
-            # if self.num_of_days_target > 0:
-            #     sample = np.concatenate((sample, day_sample_target[:, :, 0:1]), axis=2)
-            if self.num_of_hours > 0:
-                # sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-                sample = hour_sample[:, :, [0, 3]]
-
-            if self.num_of_days > 0:
-                # sample = np.concatenate((sample, day_sample[:, :, 0:1]), axis=2)
-                sample = np.concatenate((sample, day_sample[:, :, [0, 3]]), axis=2)
-
-            if self.num_of_weeks > 0:
-                sample = np.concatenate((sample, week_sample[:, :, [0, 3]]), axis=2)
-
-            if self.num_of_weeks_target > 0:
-                sample = np.concatenate((sample, week_sample_target[:, :, [0, 3]]), axis=2)
-                ### hr and wk_dy indices are not used as features. So skipping attaching ###
-
-            # sample = np.concatenate((sample, hr_idx_sample, wk_dy_idx_sample, time_idx_sample), axis=2)
-            # sample = np.concatenate((sample, time_idx_sample), axis=2)
-
-            # target = np.concatenate((target[:, :, 0:1], hr_idx_target, wk_dy_idx_target), axis=2)
-            all_samples.append(sample)
-            all_targets.append(target[:, :, 0:1])
-
-        split_line1 = int(len(all_samples) * 0.6)
-        split_line2 = int(len(all_samples) * 0.8)
-
-        training_x_set = np.array(all_samples[:split_line1])
-        validation_x_set = np.array(all_samples[split_line1: split_line2])
-        testing_x_set = np.array(all_samples[split_line2:])
-
-        training_y_set = np.array(all_targets[:split_line1])
-        validation_y_set = np.array(all_targets[split_line1: split_line2])
-        testing_y_set = np.array(all_targets[split_line2:])
+        # attach last day and last week time series with last hour data
+        # Warning: we attached weekly index along with the speed value in the prev step.
+        # So, picking right index is important from now on. new_seq_all -> (8354, 12, 228, 1) -> (8354, 12, 228, 2)
+        # In the following step we attach one or two values pertaining to last day and last week speed values
+        total_drop = 0
+        if self.last_day:
+            total_drop = self.day_slot * 1
+        if self.last_week:
+            total_drop = self.day_slot * self.num_days_per_week
+        training_x_set = attach_prev_dys_seq(seq_train, self.len_input, self.day_slot, self.num_days_per_week,
+                                             self.last_week, self.last_day, total_drop)
+        validation_x_set = attach_prev_dys_seq(seq_val, self.len_input, self.day_slot, self.num_days_per_week,
+                                               self.last_week, self.last_day, total_drop)
+        testing_x_set = attach_prev_dys_seq(seq_test, self.len_input, self.day_slot, self.num_days_per_week,
+                                            self.last_week, self.last_day, total_drop)
 
         # Derive global representation vector for each sensor for similar time steps
         records_time_idx = None
         if self.rep_vectors:
             records_time_idx = derive_rep_timeline(training_x_set,
-                                                   self.points_per_week,
+                                                   self.day_slot * self.num_days_per_week,
                                                    self.num_of_vertices,
-                                                   load_file=False,
+                                                   load_file=True,
                                                    output_filename=self.rep_vector_filename)
+
+        # When we consider last day or last week data, we have to drop a certain amount data in training
+        # y dataset as done in training x dataset.
+        training_y_set = seq_train[total_drop:, self.len_input:]
+        validation_y_set = seq_val[total_drop:, self.len_input:]
+        testing_y_set = seq_test[total_drop:, self.len_input:]
 
         training_x_set = self._generate_new_x_arr(training_x_set, records_time_idx)
         validation_x_set = self._generate_new_x_arr(validation_x_set, records_time_idx)
@@ -196,11 +171,11 @@ class DataLoader:
 
         # Add tailing target values form x values to facilitate local trend attention in decoder
         training_y_set = np.concatenate(
-            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set), axis=1)
+            (training_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], training_y_set[:, :, :, 0:1]), axis=1)
         validation_y_set = np.concatenate(
-            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set), axis=1)
+            (validation_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], validation_y_set[:, :, :, 0:1]), axis=1)
         testing_y_set = np.concatenate(
-            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set), axis=1)
+            (testing_x_set[:, -1 * self.dec_seq_offset:, :, 0:1], testing_y_set[:, :, :, 0:1]), axis=1)
 
         # max-min normalization on input and target values
         (stats_x, x_train, x_val, x_test) = min_max_normalize(training_x_set, validation_x_set, testing_x_set)
@@ -267,9 +242,9 @@ class DataLoader:
         edge_index = np.array(semantic_edge_details[0])
         edge_attr = np.array(semantic_edge_details[1])
 
-        edge_index_np = edge_index.reshape((2, -1, 10))[:, :, :self.semantic_threashold].reshape(2, -1)
+        edge_index_np = edge_index.reshape((2, -1, 5))[:, :, :self.semantic_threashold].reshape(2, -1)
         edge_index = [list(edge_index_np[0]), list(edge_index_np[1])]
-        edge_attr = edge_attr.reshape((-1, 10))[:, :self.semantic_threashold].reshape(-1, 1)
+        edge_attr = edge_attr.reshape((-1, 5))[:, :self.semantic_threashold].reshape(-1, 1)
 
         return [edge_index, edge_attr]
 

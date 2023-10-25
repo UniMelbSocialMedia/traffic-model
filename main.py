@@ -33,7 +33,7 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
 
     for epoch in range(epochs):
         # if is_lr_sh:
-            # logger.info(f"LR: {lr_scheduler.get_last_lr()}")
+        # logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
@@ -74,12 +74,12 @@ def train_validate(model, configs: dict, data_loader: DataLoader):
     huber_loss_fn = Huber_Loss(delta=1.0)
 
     # Initial Training
-#    _train(model=model,
-#           configs=configs,
-#           lr=0.001,
-#           ls_fn=mse_loss_fn,
-#           is_lr_sh=True,
-#           _train=True)
+    _train(model=model,
+           configs=configs,
+           lr=0.001,
+           ls_fn=mse_loss_fn,
+           is_lr_sh=True,
+           _train=True)
 
     # Fine tuning
     best_model_path = _train(model=model,
@@ -121,14 +121,9 @@ def prepare_data(model_configs: dict, data_configs: dict):
     model_configs['transformer']['encoder']['edge_index'] = edge_index
     model_configs['transformer']['encoder']['edge_attr'] = edge_attr
     model_configs['transformer']['encoder']['edge_details'] = edge_details
-    model_configs['transformer']['encoder']['num_of_weeks'] = data_configs['num_of_weeks']
-    model_configs['transformer']['encoder']['num_of_days'] = data_configs['num_of_days']
-    model_configs['transformer']['encoder']['basic_input_len'] = data_configs['len_input']
-    model_configs['transformer']['encoder']['points_per_hour'] = data_configs['points_per_hour']
-    model_configs['transformer']['encoder']['num_days_per_week'] = data_configs['num_days_per_week']
 
-    max_lkup_len_enc, lkup_idx_enc, max_lkup_len_dec, lkup_idx_dec = create_lookup_index(data_configs['num_of_weeks'],
-                                                                                         data_configs['num_of_days'],
+    max_lkup_len_enc, lkup_idx_enc, max_lkup_len_dec, lkup_idx_dec = create_lookup_index(data_configs['last_week'],
+                                                                                         data_configs['last_day'],
                                                                                          data_configs['dec_seq_offset'],
                                                                                          dec_seq_len)
 
