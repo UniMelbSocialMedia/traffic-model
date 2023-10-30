@@ -116,18 +116,21 @@ class TransformerDecoder(nn.Module):
         tgt_mask_conv = self.create_conv_mask(out_d, device)
 
         for idx, layer in enumerate(self.layers):
+            enc_x_conv = []
             if self.local_trends:
                 out_d = self.calculate_masked_src(out_d, self.conv_q_layers[idx], tgt_mask_conv, device)
 
-            enc_xs = []
-            for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
-                if self.enc_features > 1:
-                    enc_xs.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
-                else:
-                    start = idx_k * self.per_enc_feature_len
-                    enc_xs.append(
-                        f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
+                for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
+                    if self.enc_features > 1:
+                        enc_x_conv.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
+                    else:
+                        start = idx_k * self.per_enc_feature_len
+                        enc_x_conv.append(
+                            f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
-            out_d = layer(out_d, enc_xs, tgt_mask)
+            else:
+                enc_x_conv = [enc_x[0], enc_x[1]]
+
+            out_d = layer(out_d, enc_x_conv, tgt_mask)
 
         return self._return_mat(out_d, embed_shp)
