@@ -3,7 +3,7 @@ from torch import nn
 
 from models.transformer.positional_embedding import PositionalEmbedding
 from models.transformer.decoder_block import DecoderBlock
-from models.transformer.token_embedding import TokenEmbedding
+from models.transformer.embedding import Embedding
 
 
 class TransformerDecoder(nn.Module):
@@ -29,7 +29,11 @@ class TransformerDecoder(nn.Module):
         self.cross_attn_features = configs['decoder_block']['cross_attn_features']
 
         # embedding
-        self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
+        num_nodes = configs['num_nodes']
+        batch_size = configs['batch_size']
+        self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
+                                   num_nodes=num_nodes, batch_size=batch_size)
+        self.emb_dim = self.emb_dim * 2
         self.position_embedding = PositionalEmbedding(max_lookup_len, self.emb_dim)
 
         # convolution related
@@ -129,7 +133,7 @@ class TransformerDecoder(nn.Module):
                             f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
             else:
-                enc_x_conv = [enc_x[0], enc_x[1]]
+                enc_x_conv = [enc_x[0]]
 
             out_d = layer(out_d, enc_x_conv, tgt_mask)
 

@@ -18,7 +18,7 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     optimizer.zero_grad()
 
     if is_lr_sh:
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=20, T_mult=1,
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=100, T_mult=1,
                                                                             eta_min=0.00001)
         # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
         lr_rates = [0.001, 0.0008875, 0.0007750000000000001, 0.0006625, 0.00055, 0.0004375, 0.000325, 0.0002125, 0.0001,
@@ -121,6 +121,10 @@ def prepare_data(model_configs: dict, data_configs: dict):
     model_configs['transformer']['encoder']['edge_index'] = edge_index
     model_configs['transformer']['encoder']['edge_attr'] = edge_attr
     model_configs['transformer']['encoder']['edge_details'] = edge_details
+    model_configs['transformer']['encoder']['num_nodes'] = data_configs['num_of_vertices']
+    model_configs['transformer']['encoder']['batch_size'] = model_configs['batch_size']
+    model_configs['transformer']['decoder']['num_nodes'] = data_configs['num_of_vertices']
+    model_configs['transformer']['decoder']['batch_size'] = model_configs['batch_size']
 
     max_lkup_len_enc, lkup_idx_enc, max_lkup_len_dec, lkup_idx_dec = create_lookup_index(data_configs['last_week'],
                                                                                          data_configs['last_day'],

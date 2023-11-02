@@ -35,14 +35,17 @@ class SGATTransformer(nn.Module):
         decoder_configs['device'] = self.device
         self.decoder = TransformerDecoder(decoder_configs)
 
+        self.temporal_proj = nn.Linear(36, 12)
+        self.output_proj = nn.Linear(128, 1)
+
     def _create_mask(self, batch_size, device):
         trg_mask = torch.triu(torch.ones((self.dec_seq_len, self.dec_seq_len)))\
-            .fill_diagonal_(0).bool().expand(batch_size * 8, self.dec_seq_len, self.dec_seq_len)
+            .fill_diagonal_(0).bool().expand(batch_size * 4, self.dec_seq_len, self.dec_seq_len)
         return trg_mask.to(device)
 
     def _create_enc_out(self, x):
         emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * self.enc_emb_expansion_factor
-        enc_outs = torch.zeros((self.enc_features, x[0].shape[0] * x[0].shape[2], x[0].shape[1], emb_dim * 4))\
+        enc_outs = torch.zeros((self.enc_features, x[0].shape[0] * x[0].shape[2], x[0].shape[1], emb_dim * 8))\
             .to(self.device)
         return enc_outs
 
@@ -56,14 +59,19 @@ class SGATTransformer(nn.Module):
             enc_out = encoder(x_i, time_idx, idx)
             enc_outs[idx] = enc_out
 
-        if train:
-            dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
-            return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
-        else:
-            dec_out_len = self.dec_seq_len - self.dec_seq_offset
-            for i in range(dec_out_len):
-                y_input = torch.tensor(y)
-                dec_out = self.decoder(y_input, enc_outs, tgt_mask=tgt_mask, device=self.device)
-                y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
+        enc_out = enc_outs[0].view(8, 207, 36, 128).transpose(2, 3)
+        out = self.temporal_proj(enc_out)
+        out = self.output_proj(out.transpose(2,3)).transpose(1, 2)
 
-            return y[:, self.dec_seq_offset:]
+        return out
+        # if train:
+        #     dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
+        #     return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
+        # else:
+        #     dec_out_len = self.dec_seq_len - self.dec_seq_offset
+        #     for i in range(dec_out_len):
+        #         y_input = torch.tensor(y)
+        #         dec_out = self.decoder(y_input, enc_outs, tgt_mask=tgt_mask, device=self.device)
+        #         y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
+        #
+        #     return y[:, self.dec_seq_offset:]

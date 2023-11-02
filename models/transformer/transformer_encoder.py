@@ -4,7 +4,7 @@ from torch import nn, Tensor
 from models.sgat.sgat_embedding import SGATEmbedding
 from models.transformer.positional_embedding import PositionalEmbedding
 from models.transformer.encoder_block import EncoderBlock
-from models.transformer.token_embedding import TokenEmbedding
+from models.transformer.embedding import Embedding
 
 from torch_geometric.transforms import ToDevice
 import torch_geometric.data as data
@@ -35,11 +35,17 @@ class TransformerEncoder(nn.Module):
         n_layers = configs['n_layers']
 
         # embedding
+        num_nodes = configs['num_nodes']
+        batch_size = configs['batch_size']
         configs['sgat'] = configs['sgat_rep']
         if enc_idx == 0:
             configs['sgat'] = configs['sgat_normal']
-        self.embedding = TokenEmbedding(input_dim=input_dim, embed_dim=self.emb_dim)
+
+        self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
+                                   num_nodes=num_nodes, batch_size=batch_size)
         configs['sgat']['seq_len'] = self.seq_len
+
+        self.emb_dim = self.emb_dim * 2
 
         configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
         if self.graph_input:
