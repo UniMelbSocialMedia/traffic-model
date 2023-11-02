@@ -36,13 +36,13 @@ class TransformerEncoder(nn.Module):
 
         # embedding
         num_nodes = configs['num_nodes']
-        batch_size = configs['batch_size']
+        self.batch_size = configs['batch_size']
         configs['sgat'] = configs['sgat_rep']
         if enc_idx == 0:
             configs['sgat'] = configs['sgat_normal']
 
         self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
-                                   num_nodes=num_nodes, batch_size=batch_size)
+                                   num_nodes=num_nodes, batch_size=self.batch_size)
         configs['sgat']['seq_len'] = self.seq_len
 
         self.emb_dim = self.emb_dim * 2
@@ -75,9 +75,9 @@ class TransformerEncoder(nn.Module):
         # by merging embeddings we increase the output dimension
         if self.merge_emb:
             self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 4)
+        self.out_norm = nn.LayerNorm(self.emb_dim * 2)
 
-        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
+        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 2)
         self.dropout_e_rep = nn.Dropout(dropout_e_rep)
         self.dropout_e_normal = nn.Dropout(dropout_e_normal)
 
@@ -117,6 +117,7 @@ class TransformerEncoder(nn.Module):
 
     def forward(self, x, x_time_idx, enc_idx):
         embed_out = self.embedding(x)
+        embed_out_shp = embed_out.shape
         embed_out = self._organize_matrix(embed_out)
 
         out_e = self.positional_encoder(embed_out, self.lookup_idx)
@@ -129,6 +130,9 @@ class TransformerEncoder(nn.Module):
             else:
                 q, k, v = out_e, out_e, out_e
 
+            q = q.reshape(embed_out_shp[0], embed_out_shp[2], embed_out_shp[1], embed_out_shp[3])
+            v = v.reshape(embed_out_shp[0], embed_out_shp[2], embed_out_shp[1], embed_out_shp[3])
+            k = k.reshape(embed_out_shp[0], embed_out_shp[2], embed_out_shp[1], embed_out_shp[3])
             out_e = layer(q, k, v)
 
         if enc_idx == 0:
@@ -154,10 +158,10 @@ class TransformerEncoder(nn.Module):
             elif not self.graph_input and self.graph_semantic_input:
                 out_g = out_g_semantic
             elif not self.graph_input and not self.graph_semantic_input:
-                out_e = self.dropout_e_normal(self.out_e_lin(out_e))
+                out_e = self.dropout_e_normal(out_e)
                 return out_e
 
-            out = self.dropout_e_normal(self.out_e_lin(out_e)) + self._organize_matrix(out_g)
+            out = self.dropout_e_normal(self.out_e_lin(out_e)) + out_g.transpose(1, 2)
             return out  # 32x10x512
 
         else:

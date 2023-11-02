@@ -36,7 +36,7 @@ class SGATTransformer(nn.Module):
         self.decoder = TransformerDecoder(decoder_configs)
 
         self.temporal_proj = nn.Linear(36, 12)
-        self.output_proj = nn.Linear(128, 1)
+        self.output_proj = nn.Linear(64, 1)
 
     def _create_mask(self, batch_size, device):
         trg_mask = torch.triu(torch.ones((self.dec_seq_len, self.dec_seq_len)))\
@@ -45,7 +45,7 @@ class SGATTransformer(nn.Module):
 
     def _create_enc_out(self, x):
         emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * self.enc_emb_expansion_factor
-        enc_outs = torch.zeros((self.enc_features, x[0].shape[0] * x[0].shape[2], x[0].shape[1], emb_dim * 8))\
+        enc_outs = torch.zeros((self.enc_features, x[0].shape[0], x[0].shape[2], x[0].shape[1], 128))\
             .to(self.device)
         return enc_outs
 
@@ -53,13 +53,13 @@ class SGATTransformer(nn.Module):
         enc_outs = self._create_enc_out(x)
         tgt_mask = self._create_mask(enc_outs.shape[1], self.device)
 
-        for idx, encoder in enumerate(self.encoders):
-            x_i = x[idx]
-
-            enc_out = encoder(x_i, time_idx, idx)
-            enc_outs[idx] = enc_out
-
-        enc_out = enc_outs[0].view(8, 207, 36, 128).transpose(2, 3)
+        # for idx, encoder in enumerate(self.encoders):
+        #     x_i = x[idx]
+        #
+        #     enc_out = encoder(x_i)
+        #     enc_outs[idx] = enc_out
+        #
+        enc_out = self.encoders[0](x[0], time_idx, 0).transpose(2, 3)
         out = self.temporal_proj(enc_out)
         out = self.output_proj(out.transpose(2,3)).transpose(1, 2)
 

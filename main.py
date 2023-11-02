@@ -20,9 +20,6 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
     if is_lr_sh:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=100, T_mult=1,
                                                                             eta_min=0.00001)
-        # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=2, gamma=0.75)
-        lr_rates = [0.001, 0.0008875, 0.0007750000000000001, 0.0006625, 0.00055, 0.0004375, 0.000325, 0.0002125, 0.0001,
-                    9.17e-05, 8.340000000000001e-05, 7.510000000000001e-05, 6.68e-05, 5.8500000000000006e-05, 5.02e-05]
 
         # lr_scheduler = CustomLRScheduler(optimizer, lr_rates, 15)
 
