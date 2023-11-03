@@ -123,6 +123,7 @@ class TransformerEncoder(nn.Module):
         out_e = self.positional_encoder(embed_out, self.lookup_idx)
         for (layer, conv_q, conv_k) in zip(self.layers, self.conv_q_layers, self.conv_k_layers):
             if self.local_trends:
+                out_e = out_e.view(-1, embed_out_shp[1], embed_out_shp[3])
                 out_transposed = out_e.transpose(2, 1)
                 q = conv_q(out_transposed).transpose(2, 1)
                 k = conv_k(out_transposed).transpose(2, 1)
