@@ -8,7 +8,7 @@ class Embedding(nn.Module):
         self.token_embed = nn.Linear(input_dim, embed_dim)
         self.norm = norm_layer(embed_dim * 2) if norm_layer is not None else nn.Identity()
         self.adaptive_embedding = nn.init.xavier_uniform_(
-            nn.Parameter(torch.empty(time_steps, num_nodes, 16))
+            nn.Parameter(torch.empty(time_steps, num_nodes, embed_dim))
         )
         self.batch_size = batch_size
 

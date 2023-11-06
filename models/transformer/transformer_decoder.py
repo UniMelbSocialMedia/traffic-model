@@ -101,18 +101,16 @@ class TransformerDecoder(nn.Module):
         mat = mat.permute(1, 0, 2)  # (4 * 170, 36, 16)
         return mat
 
-    def _return_mat(self, out, shp):
+    def _return_mat(self, out):
         out = self.fc_out(out)
-
-        out = out.permute(1, 0, 2)
-        out = out.reshape(shp[1], shp[0], shp[2], out.shape[-1])
-        out = out.permute(1, 0, 2, 3)
+        out = out.transpose(1, 2)
 
         return out
 
     def forward(self, x, enc_x, tgt_mask, device):
         embed_out = self.embedding(x)
         embed_shp = embed_out.shape
+        enc_x_shp = enc_x[0].shape
         embed_out = self._organize_matrix(embed_out)
 
         out_d = self.position_embedding(embed_out, self.lookup_idx)  # 32x10x512
@@ -122,6 +120,7 @@ class TransformerDecoder(nn.Module):
         for idx, layer in enumerate(self.layers):
             enc_x_conv = []
             if self.local_trends:
+                out_d = out_d.view(-1, embed_shp[1], embed_shp[3])
                 out_d = self.calculate_masked_src(out_d, self.conv_q_layers[idx], tgt_mask_conv, device)
 
                 for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
@@ -129,12 +128,15 @@ class TransformerDecoder(nn.Module):
                         enc_x_conv.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
                     else:
                         start = idx_k * self.per_enc_feature_len
+                        enc_x_0 = self._organize_matrix(enc_x[0].transpose(1, 2))
                         enc_x_conv.append(
-                            f_layer(enc_x[0][:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
+                            f_layer(enc_x_0[:, start: start + self.per_enc_feature_len].transpose(2, 1)).transpose(2, 1))
 
             else:
-                enc_x_conv = [enc_x[0]]
+                enc_x_conv = [x for x in enc_x]
 
-            out_d = layer(out_d, enc_x_conv, tgt_mask)
+            out_d = out_d.reshape(embed_shp[0], embed_shp[2], embed_shp[1], embed_shp[3])
+            enc_x_conv_ = [x.reshape(enc_x_shp[0], enc_x_shp[1], enc_x_shp[2], enc_x_shp[3]) for x in enc_x_conv]
+            out_d = layer(out_d, enc_x_conv_, tgt_mask)
 
-        return self._return_mat(out_d, embed_shp)
+        return self._return_mat(out_d)
