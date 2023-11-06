@@ -136,7 +136,7 @@ class TransformerDecoder(nn.Module):
                 enc_x_conv = [x for x in enc_x]
 
             out_d = out_d.reshape(embed_shp[0], embed_shp[2], embed_shp[1], embed_shp[3])
-            enc_x_conv_ = [x.reshape(enc_x_shp[0], enc_x_shp[1], enc_x_shp[2], enc_x_shp[3]) for x in enc_x_conv]
-            out_d = layer(out_d, enc_x_conv_, tgt_mask)
+            enc_x_conv = [x.reshape(enc_x_shp[0], enc_x_shp[1], enc_x_shp[2], enc_x_shp[3]) for x in enc_x_conv]
+            out_d = layer(out_d, enc_x_conv, tgt_mask)
 
         return self._return_mat(out_d)
