@@ -50,7 +50,7 @@ class DecoderBlock(nn.Module):
         enc_x = torch.concat(enc_x, dim=1)
         cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
 
-        x = self.norm2(self.dropout_src(x) + cross_attn)
+        x = self.norm2(x + cross_attn)
 
         # positionwise ffn
         ff_output = self.feed_forward(x)
