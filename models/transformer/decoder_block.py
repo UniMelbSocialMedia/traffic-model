@@ -32,6 +32,8 @@ class DecoderBlock(nn.Module):
         self.norm3 = nn.LayerNorm(emb_dim)
         self.dropout2 = nn.Dropout(ff_dropout)
 
+        self.dropout_src = nn.Dropout(0.8)
+
     def forward(self, x, enc_x, tgt_mask):
         # self attention
         attention = self.self_attention(x, x, x)  # 32x10x512
@@ -48,7 +50,7 @@ class DecoderBlock(nn.Module):
         enc_x = torch.concat(enc_x, dim=1)
         cross_attn = self.cross_attn_layers[0](x, enc_x, enc_x)
 
-        x = self.norm2(x + cross_attn)
+        x = self.norm2(self.dropout_src(x) + cross_attn)
 
         # positionwise ffn
         ff_output = self.feed_forward(x)
