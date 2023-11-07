@@ -32,8 +32,6 @@ class DecoderBlock(nn.Module):
         self.norm3 = nn.LayerNorm(emb_dim)
         self.dropout2 = nn.Dropout(ff_dropout)
 
-        self.dropout_src = nn.Dropout(0.8)
-
     def forward(self, x, enc_x, tgt_mask):
         # self attention
         attention = self.self_attention(x, x, x)  # 32x10x512
