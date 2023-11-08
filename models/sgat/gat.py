@@ -45,7 +45,7 @@ class GAT(nn.Module):
                 x = [x1, x2]
                 x = gat_layer(x, edge_attr=edge_attr, edge_index=edge_index)
                 x = x.reshape(x_shp[0], self.seq_len, self.out_f_sizes[-1])  # 307, 36, 288
-                # x = self.lin(x)
+                x = self.lin(x)
                 x = x.permute(1, 0, 2)  # 36, 307, 288
 
                 if l < (self.n_layers - 1):

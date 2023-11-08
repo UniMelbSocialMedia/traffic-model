@@ -212,23 +212,28 @@ class DataLoader:
         return self.dataset
 
     def load_edge_data_file(self):
-        edge_weight_file = open(self.edge_weight_filename, 'rb')
-        adj_mx = pd.read_pickle(edge_weight_file)[2]
+        try:
+            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
 
-        dst_edges = []
-        src_edges = []
-        edge_attr = []
-        for i, row in enumerate(adj_mx):
-            for j, col in enumerate(row):
-                if i != j and col != 0:
-                    src_edges.append(i)
-                    dst_edges.append(j)
-                    edge_attr.append(col)
+            dst_edges = []
+            src_edges = []
+            edge_attr = []
+            for row in range(w.shape[0]):
+                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
+                # degrade test performance (Over-fitting).
+                if float(w[row][2]) > self.distance_threshold:
+                    continue
+                dst_edges.append(int(float(w[row][1])))
+                src_edges.append(int(float(w[row][0])))
+                edge_attr.append([float(w[row][2])])
 
-        edge_index = [src_edges, dst_edges]
-        edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
+            edge_index = [src_edges, dst_edges]
+            edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
 
-        return edge_index, edge_attr
+            return edge_index, edge_attr
+
+        except FileNotFoundError:
+            print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')

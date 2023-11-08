@@ -175,7 +175,7 @@ class GATConvV8(MessagePassingV8):
                 self.lin_r = self.lin_l
             else:
                 self.lin_r = nn.ModuleList([
-                    Linear(self.single_input_dim, heads * out_channels,
+                    Linear(self.single_input_dim, heads * self.single_input_dim,
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
 
@@ -183,12 +183,12 @@ class GATConvV8(MessagePassingV8):
         # self.x_r_new = torch.zeros((36, num_edges, 4, 64)).to('cuda')
 
         # Defining multiple parameters instead of single parameter to accommodate sequence data
-        self.att = Parameter(torch.Tensor(seq_len, 1, heads, out_channels))
+        self.att = Parameter(torch.Tensor(seq_len, 1, heads, (out_channels + 2 * self.single_input_dim)))
 
         # self.att = Parameter(torch.Tensor(1, heads, out_channels))
 
         if edge_dim is not None:
-            self.lin_edge = Linear(edge_dim, seq_len * heads * out_channels, bias=False, weight_initializer='glorot')
+            self.lin_edge = Linear(edge_dim, seq_len * heads * self.single_input_dim, bias=False, weight_initializer='glorot')
             # self.lin_edge = Linear(edge_dim, heads * out_channels, bias=False,
             #                        weight_initializer='glorot')
         else:
@@ -337,7 +337,7 @@ class GATConvV8(MessagePassingV8):
         # ed00 = time.time()
         # print(f'Time 00: {ed00 - ed2}')
         #
-        x_i_new = torch.stack(x_i_new).view(self.seq_len, -1, self.heads, self.out_channels)
+        x_i_new = torch.stack(x_i_new).view(self.seq_len, -1, self.heads, self.single_input_dim)
 
         # for t in range(self.seq_len):
         #     start = t * self.single_input_dim
@@ -354,7 +354,7 @@ class GATConvV8(MessagePassingV8):
         # ed0 = time.time()
         # print(f'Time 0: {ed0 - ed00}')
 
-        x = x_j + x_i_new
+        x = torch.concat((x_j, x_i_new), dim=-1)
 
         # ed3 = time.time()
         # print(f'Time 3: {ed3 - ed0}')
@@ -366,10 +366,10 @@ class GATConvV8(MessagePassingV8):
                 edge_attr = edge_attr
             assert self.lin_edge is not None
             edge_attr = self.lin_edge(edge_attr)
-            edge_attr = edge_attr.view(-1, self.seq_len, self.heads, self.out_channels)
+            edge_attr = edge_attr.view(-1, self.seq_len, self.heads, self.single_input_dim)
             edge_attr = edge_attr.permute(1, 0, 2, 3)
 
-            x = x + edge_attr
+            x = torch.concat((x, edge_attr), dim=-1)
 
         # ed4 = time.time()
         # print(f'Time 4: {ed4 - ed3}')
