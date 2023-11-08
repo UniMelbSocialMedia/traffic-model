@@ -69,7 +69,7 @@ class DataLoader:
         last_wk_idx = 4
 
         # Attach rep vectors for last day and last week data and drop weekly time index value
-        new_n_f = x_set.shape[3]-3
+        new_n_f = x_set.shape[3]-1
         # To add rep last hour seq
         if self.rep_vectors:
             new_n_f += 1
@@ -84,7 +84,8 @@ class DataLoader:
         for i, x in enumerate(x_set):
             # WARNING: had to determine which index represent weekly time idx
             record_key = x[0, 0, 1]
-            record_key_yesterday = x[0, 0, 3]
+            if self.last_day:
+                record_key_yesterday = x[0, 0, 3]
 
             tmp = x[:, :, speed_idx:speed_idx + 1]
             if self.last_day:
