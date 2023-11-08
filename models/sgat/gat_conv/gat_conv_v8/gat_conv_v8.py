@@ -167,7 +167,7 @@ class GATConvV8(MessagePassingV8):
             # self.lin_l = Linear(in_channels[0], heads * out_channels,
             #                     bias=bias, weight_initializer='glorot')
 
-            self.lin_l = Linear(in_channels[0], seq_len * heads * out_channels, bias=bias, weight_initializer='glorot')
+            self.lin_l = Linear(in_channels[0], seq_len * heads * in_channels[0], bias=bias, weight_initializer='glorot')
 
             self.single_input_dim = int(in_channels[0] / seq_len)
 
@@ -179,13 +179,10 @@ class GATConvV8(MessagePassingV8):
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
 
-        # self.msg_f = torch.zeros((num_edges, 4, 64 * self.seq_len)).to('cuda')
-        # self.x_r_new = torch.zeros((36, num_edges, 4, 64)).to('cuda')
+            self.lin_msg = nn.Linear(in_channels[0], out_channels * 2)
 
         # Defining multiple parameters instead of single parameter to accommodate sequence data
-        self.att = Parameter(torch.Tensor(seq_len, 1, heads, (out_channels + 2 * self.single_input_dim)))
-
-        # self.att = Parameter(torch.Tensor(1, heads, out_channels))
+        self.att = Parameter(torch.Tensor(seq_len, 1, heads, out_channels))
 
         if edge_dim is not None:
             self.lin_edge = Linear(edge_dim, seq_len * heads * self.single_input_dim, bias=False, weight_initializer='glorot')
@@ -197,7 +194,7 @@ class GATConvV8(MessagePassingV8):
         if bias and concat:
             self.bias = Parameter(torch.Tensor(heads * out_channels))
         elif bias and not concat:
-            self.bias = Parameter(torch.Tensor(out_channels * self.seq_len))
+            self.bias = Parameter(torch.Tensor(out_channels * 2 * self.seq_len))
         else:
             self.register_parameter('bias', None)
 
@@ -323,7 +320,7 @@ class GATConvV8(MessagePassingV8):
         # ed1 = time.time()
         # print(f'Time 1: {ed1 - st1}')
 
-        x_j = self.lin_l(x_j).view(-1, self.seq_len, self.heads, self.out_channels)
+        x_j = self.lin_l(x_j).view(-1, self.seq_len, self.heads, self.in_channels[0])
         x_j = x_j.permute(1, 0, 2, 3)
 
         # ed2 = time.time()
@@ -353,8 +350,14 @@ class GATConvV8(MessagePassingV8):
 
         # ed0 = time.time()
         # print(f'Time 0: {ed0 - ed00}')
+        x_j_shp = x_j.size()
+        x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], self.seq_len, self.single_input_dim)
 
-        x = torch.concat((x_j, x_i_new), dim=-1)
+        x_i_new = torch.unsqueeze(x_i_new, dim=-2)
+
+        attn_score = (x_i_new @ x_j.transpose(-2, -1))
+        attn_score = torch.softmax(attn_score, dim=-1)
+        x = torch.squeeze((attn_score @ x_j), dim=-2)
 
         # ed3 = time.time()
         # print(f'Time 3: {ed3 - ed0}')
@@ -369,7 +372,7 @@ class GATConvV8(MessagePassingV8):
             edge_attr = edge_attr.view(-1, self.seq_len, self.heads, self.single_input_dim)
             edge_attr = edge_attr.permute(1, 0, 2, 3)
 
-            x = torch.concat((x, edge_attr), dim=-1)
+            x = x + edge_attr
 
         # ed4 = time.time()
         # print(f'Time 4: {ed4 - ed3}')
@@ -380,12 +383,13 @@ class GATConvV8(MessagePassingV8):
         self._alpha = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
 
-        msg_t = x_j * alpha.unsqueeze(-1)
+        x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], -1)
+        msg_t = self.lin_msg(x_j) * alpha.unsqueeze(-1)
 
         # ed5 = time.time()
         # print(f'Time 5: {ed5 - ed4}')
 
-        msg_f = msg_t.permute(1, 2, 0, 3).reshape(-1, self.heads, self.seq_len * self.out_channels)
+        msg_f = msg_t.permute(1, 2, 0, 3).reshape(-1, self.heads, self.seq_len * self.out_channels * 2)
         # for t in range(self.seq_len):
         #     start = t * self.out_channels
         #     end = (t+1) * self.out_channels
