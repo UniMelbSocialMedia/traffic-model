@@ -309,56 +309,20 @@ class GATConvV8(MessagePassingV8):
                 index: Tensor, ptr: OptTensor,
                 size_i: Optional[int]) -> Tensor:
 
-        # st1 = time.time()
-        #
-        # x_j_shp = x_j.size()
-        # msg_f = torch.zeros_like(self.msg_f)
-        # x_i_new = torch.zeros_like(self.x_r_new)
-
-        # ed1 = time.time()
-        # print(f'Time 1: {ed1 - st1}')
-
         x_j = self.lin_l(x_j).view(-1, self.seq_len, self.heads, self.in_channels[0])
         x_j = x_j.permute(1, 0, 2, 3)
-
-        # ed2 = time.time()
-        # print(f'Time 2: {ed2 - ed1}')
+        x_j_shp = x_j.size()
+        x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], self.seq_len, self.single_input_dim)
 
         x_i = x_i.view(-1, self.seq_len, self.single_input_dim)
         x_i = x_i.permute(1, 0, 2)
         x_i_new = [self.lin_r[t](x_i[t]) for t in range(self.seq_len)]
-        # x_i_new = self.lin_r[0](x_i).view(self.seq_len, -1, self.heads, self.out_channels)
-
-        # ed00 = time.time()
-        # print(f'Time 00: {ed00 - ed2}')
-        #
         x_i_new = torch.stack(x_i_new).view(self.seq_len, -1, self.heads, self.single_input_dim)
-
-        # for t in range(self.seq_len):
-        #     start = t * self.single_input_dim
-        #     end = (t+1) * self.single_input_dim
-        #
-        #     x_i_t = self.lin_r[t](x_i[:, start: end]).view(-1, self.heads, 16)
-        #
-        #     # x_i_t = x_i[:, :, start: end]
-        #     x_i_t = self.exp_lin(x_i_t)
-        #     x_i_new[t] = x_i_t
-        #
-            # x = x_i_t + x_j_t
-
-        # ed0 = time.time()
-        # print(f'Time 0: {ed0 - ed00}')
-        x_j_shp = x_j.size()
-        x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], self.seq_len, self.single_input_dim)
-
         x_i_new = torch.unsqueeze(x_i_new, dim=-2)
 
         attn_score = (x_i_new @ x_j.transpose(-2, -1))
         attn_score = torch.softmax(attn_score, dim=-1)
-        x = torch.squeeze((attn_score @ x_j), dim=-2)
-
-        # ed3 = time.time()
-        # print(f'Time 3: {ed3 - ed0}')
+        x = torch.squeeze((x_i_new + (attn_score @ x_j)), dim=-2)
 
         if edge_attr is not None:
             if edge_attr.dim() == 1:
@@ -372,9 +336,6 @@ class GATConvV8(MessagePassingV8):
 
             x = x + edge_attr
 
-        # ed4 = time.time()
-        # print(f'Time 4: {ed4 - ed3}')
-
         x = F.leaky_relu(x, self.negative_slope)
         alpha = (x * self.att).sum(dim=-1)
         alpha = softmax(alpha, index, ptr, size_i, dim=1)
@@ -384,18 +345,7 @@ class GATConvV8(MessagePassingV8):
         x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], -1)
         msg_t = x_j * alpha.unsqueeze(-1)
 
-        # ed5 = time.time()
-        # print(f'Time 5: {ed5 - ed4}')
-
         msg_f = msg_t.permute(1, 2, 0, 3).reshape(-1, self.heads, self.seq_len * self.in_channels[0])
-        # for t in range(self.seq_len):
-        #     start = t * self.out_channels
-        #     end = (t+1) * self.out_channels
-        #     msg_f[:, :, start: end] = msg_t[t]
-
-        # ed6 = time.time()
-        # print(f'Time 6: {ed6 - ed5}')
-
         return msg_f
 
     def __repr__(self) -> str:
