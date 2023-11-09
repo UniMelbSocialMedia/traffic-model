@@ -182,6 +182,9 @@ class GATConvV8(MessagePassingV8):
         # Defining multiple parameters instead of single parameter to accommodate sequence data
         self.att = Parameter(torch.Tensor(seq_len, 1, heads, out_channels))
 
+        self.norm_xi = nn.LayerNorm(self.single_input_dim)
+        self.drop_xi = nn.Dropout(0.4)
+
         if edge_dim is not None:
             self.lin_edge = Linear(edge_dim, seq_len * heads * self.single_input_dim, bias=False, weight_initializer='glorot')
             # self.lin_edge = Linear(edge_dim, heads * out_channels, bias=False,
@@ -322,7 +325,7 @@ class GATConvV8(MessagePassingV8):
 
         attn_score = (x_i_new @ x_j.transpose(-2, -1))
         attn_score = torch.softmax(attn_score, dim=-1)
-        x = torch.squeeze((x_i_new + (attn_score @ x_j)), dim=-2)
+        x = self.norm_xi(torch.squeeze((x_i_new + self.drop_xi(attn_score @ x_j)), dim=-2))
 
         if edge_attr is not None:
             if edge_attr.dim() == 1:
