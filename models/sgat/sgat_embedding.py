@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from models.sgat.gat import GAT
+from models.sgat.gat_v2 import GAT
 from models.sgat.gat_layer_skip import GATV2
 
 
