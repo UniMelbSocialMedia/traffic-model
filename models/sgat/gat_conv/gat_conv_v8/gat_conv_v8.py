@@ -167,7 +167,7 @@ class GATConvV8(MessagePassingV8):
             # self.lin_l = Linear(in_channels[0], heads * out_channels,
             #                     bias=bias, weight_initializer='glorot')
 
-            self.lin_l = Linear(in_channels[0], seq_len * heads * in_channels[0], bias=bias, weight_initializer='glorot')
+            self.lin_l = Linear(in_channels[0] * 4, seq_len * heads * in_channels[0], bias=bias, weight_initializer='glorot')
 
             self.single_input_dim = int(in_channels[0] / seq_len)
 
@@ -175,12 +175,12 @@ class GATConvV8(MessagePassingV8):
                 self.lin_r = self.lin_l
             else:
                 self.lin_r = nn.ModuleList([
-                    Linear(self.single_input_dim, heads * self.single_input_dim,
+                    Linear(self.single_input_dim * 4, heads * self.single_input_dim,
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
 
         # Defining multiple parameters instead of single parameter to accommodate sequence data
-        self.att = Parameter(torch.Tensor(seq_len, 1, heads, out_channels))
+        self.att = Parameter(torch.Tensor(seq_len, 1, heads, int(out_channels / 4)))
 
         self.norm_xi = nn.LayerNorm(self.single_input_dim)
         self.drop_xi = nn.Dropout(0.4)
@@ -317,7 +317,7 @@ class GATConvV8(MessagePassingV8):
         x_j_shp = x_j.size()
         x_j = x_j.view(x_j_shp[0], x_j_shp[1], x_j_shp[2], self.seq_len, self.single_input_dim)
 
-        x_i = x_i.view(-1, self.seq_len, self.single_input_dim)
+        x_i = x_i.view(-1, self.seq_len, self.single_input_dim * 4)
         x_i = x_i.permute(1, 0, 2)
         x_i_new = [self.lin_r[t](x_i[t]) for t in range(self.seq_len)]
         x_i_new = torch.stack(x_i_new).view(self.seq_len, -1, self.heads, self.single_input_dim)
