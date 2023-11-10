@@ -21,6 +21,13 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=100, T_mult=1,
                                                                             eta_min=0.00001)
 
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer,
+            milestones=[10, 30],
+            gamma=0.1,
+            verbose=False,
+        )
+
         # lr_scheduler = CustomLRScheduler(optimizer, lr_rates, 15)
 
     best_model_path = None
