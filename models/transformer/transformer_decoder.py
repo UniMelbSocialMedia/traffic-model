@@ -125,7 +125,8 @@ class TransformerDecoder(nn.Module):
 
                 for idx_k, f_layer in enumerate(self.conv_k_layers[idx]):
                     if self.enc_features > 1:
-                        enc_x_conv.append(f_layer(enc_x[idx_k].transpose(2, 1)).transpose(2, 1))
+                        enc_x_i = self._organize_matrix(enc_x[idx_k].transpose(1, 2))
+                        enc_x_conv.append(f_layer(enc_x_i.transpose(2, 1)).transpose(2, 1))
                     else:
                         start = idx_k * self.per_enc_feature_len
                         enc_x_0 = self._organize_matrix(enc_x[0].transpose(1, 2))
