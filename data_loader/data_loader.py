@@ -275,14 +275,14 @@ class DataLoader:
 
             for idx, x_timesteps in enumerate(xs):
                 seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 2))
+                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], 1))
                 for inner_f in range(num_inner_f_enc):
                     start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
                     end_idx = start_idx + 1
 
                     tmp_xs_start_idx = seq_len * inner_f
                     tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
+                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx, 0:1], axis=-2)
 
                 batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
 
@@ -292,7 +292,7 @@ class DataLoader:
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data
         for idx, y_timesteps in enumerate(ys_input):
-            dec_ys[idx] = torch.Tensor(y_timesteps).to(device)
+            dec_ys[idx] = torch.Tensor(y_timesteps[:, :, 0:1]).to(device)
             dec_ys_target[idx] = torch.Tensor(ys[idx]).to(device)
 
         dec_ys = torch.stack(dec_ys)
