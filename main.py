@@ -39,6 +39,10 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
         # if is_lr_sh:
         # logger.info(f"LR: {lr_scheduler.get_last_lr()}")
 
+        _train = True
+        if epoch % 5 == 0:
+            _train = False
+
         mae_train_loss, rmse_train_loss, mape_train_loss = train(model=model,
                                                                  data_loader=data_loader,
                                                                  optimizer=optimizer,
