@@ -32,6 +32,9 @@ def load_adj(filename):
         edge_weight_file = open(filename, 'rb')
         adj_mx = pd.read_pickle(edge_weight_file)[2]
 
+        for i in range(len(adj_mx)):
+            adj_mx[i][i] = 0
+
         return adj_mx
 
     except FileNotFoundError:
@@ -44,7 +47,7 @@ if __name__ == '__main__':
         configs = yaml.safe_load(stream)
 
     data_configs = configs['data']
-    edge_filename = data_configs['edge_weight_filename']
+    edge_filename = data_configs['adj_file']
     adj = load_adj(f'../{edge_filename}')
 
     # Output shortest distances

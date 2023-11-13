@@ -41,6 +41,7 @@ class DataLoader:
         self.edge_weight_scaling = data_configs['edge_weight_scaling']
         self.distance_threshold = data_configs['distance_threshold']
         self.semantic_threashold = data_configs['semantic_threashold']
+        self.adj_file = data_configs['adj_file']
 
         # PEMSD7 Specific Variables
         self.n_train = 34
@@ -214,20 +215,34 @@ class DataLoader:
 
     def load_edge_data_file(self):
         try:
-            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+            edge_weight_file = open(self.adj_file, 'rb')
+            adj_mx = pd.read_pickle(edge_weight_file)[2]
 
             dst_edges = []
             src_edges = []
             edge_attr = []
-            for row in range(w.shape[0]):
-                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
-                # degrade test performance (Over-fitting).
-                if float(w[row][2]) > self.distance_threshold:
-                    continue
-                dst_edges.append(int(float(w[row][1])))
-                src_edges.append(int(float(w[row][0])))
-                edge_attr.append([float(w[row][2])])
 
+            for i, row in enumerate(adj_mx):
+                for j, col in enumerate(row):
+                    if col > 0 and i != j:
+                        src_edges.append(i)
+                        dst_edges.append(j)
+                        edge_attr.append(col)
+
+            # w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+            #
+            # dst_edges = []
+            # src_edges = []
+            # edge_attr = []
+            # for row in range(w.shape[0]):
+            #     # Drop edges with large distance between vertices. This adds incorrect attention in training time and
+            #     # degrade test performance (Over-fitting).
+            #     if float(w[row][2]) > self.distance_threshold:
+            #         continue
+            #     dst_edges.append(int(float(w[row][1])))
+            #     src_edges.append(int(float(w[row][0])))
+            #     edge_attr.append([float(w[row][2])])
+            #
             edge_index = [src_edges, dst_edges]
             edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
 
@@ -235,6 +250,20 @@ class DataLoader:
 
         except FileNotFoundError:
             print(f'ERROR: input file was not found in {self.edge_weight_filename}.')
+
+    def load_adj(self):
+        try:
+            edge_weight_file = open(self.adj_file, 'rb')
+            adj_mx = pd.read_pickle(edge_weight_file)[2]
+
+            N = adj_mx.shape[0]
+            D = np.diag(1.0 / np.sum(adj_mx, axis=1))
+            norm_Adj_matrix = np.dot(D, adj_mx)
+
+            return norm_Adj_matrix
+
+        except FileNotFoundError:
+            print(f'ERROR: input file was not found in {self.adj_file}.')
 
     def load_semantic_edge_data_file(self):
         semantic_file = open(self.semantic_adj_filename, 'rb')

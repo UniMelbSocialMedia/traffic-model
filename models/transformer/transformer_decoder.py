@@ -32,8 +32,8 @@ class TransformerDecoder(nn.Module):
         num_nodes = configs['num_nodes']
         batch_size = configs['batch_size']
         self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
-                                   num_nodes=num_nodes, batch_size=batch_size)
-        self.emb_dim = self.emb_dim * 2
+                                   num_nodes=num_nodes, batch_size=batch_size, adj=None)
+        # self.emb_dim = self.emb_dim * 2
         self.position_embedding = PositionalEmbedding(max_lookup_len, self.emb_dim)
 
         # convolution related
