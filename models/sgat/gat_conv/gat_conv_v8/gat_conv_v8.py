@@ -325,6 +325,11 @@ class GATConvV8(MessagePassingV8):
 
         attn_score = (x_i_new @ x_j.transpose(-2, -1))
         attn_score = torch.softmax(attn_score, dim=-1)
+        # mask = torch.ones(
+        #     self.seq_len, self.seq_len, dtype=torch.bool, device='cuda'
+        # ).tril()  # lower triangular part of the matrix
+        # attn_score.masked_fill_(~mask, -torch.inf)
+
         x = self.norm_xi(torch.squeeze((x_i_new + self.drop_xi(attn_score @ x_j)), dim=-2))
 
         if edge_attr is not None:

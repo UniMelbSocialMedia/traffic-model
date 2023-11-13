@@ -161,21 +161,25 @@ class GATConvV8(MessagePassingV8):
             if share_weights:
                 self.lin_r = self.lin_l
             else:
-                self.lin_r = Linear(in_channels, heads * out_channels,
+                self.lin_r = Linear(in_channels, heads * self.single_input_dim,
                                     bias=bias, weight_initializer='glorot')
         else:
             # self.lin_l = Linear(in_channels[0], heads * out_channels,
             #                     bias=bias, weight_initializer='glorot')
 
-            self.lin_l = Linear(in_channels[0], seq_len * heads * out_channels, bias=bias, weight_initializer='glorot')
-
+            # self.lin_l = Linear(seq_len * in_channels[0], seq_len * heads * out_channels, bias=bias, weight_initializer='glorot')
             self.single_input_dim = int(in_channels[0] / seq_len)
+
+            self.lin_l = nn.ModuleList([
+                Linear(self.in_channels[0], heads * self.out_channels,
+                       bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
+            ])
 
             if share_weights:
                 self.lin_r = self.lin_l
             else:
                 self.lin_r = nn.ModuleList([
-                    Linear(self.single_input_dim, heads * out_channels,
+                    Linear(self.single_input_dim, heads * self.out_channels,
                            bias=bias, weight_initializer='glorot') for _ in range(self.seq_len)
                 ])
 
@@ -207,10 +211,12 @@ class GATConvV8(MessagePassingV8):
 
     def reset_parameters(self):
         super().reset_parameters()
-        self.lin_l.reset_parameters()
+        # self.lin_l.reset_parameters()
         # self.l_r.reset_parameters()
         for l_r in self.lin_r:
             l_r.reset_parameters()
+        for l_l in self.lin_l:
+            l_l.reset_parameters()
         if self.lin_edge is not None:
             self.lin_edge.reset_parameters()
 
@@ -314,50 +320,18 @@ class GATConvV8(MessagePassingV8):
                 index: Tensor, ptr: OptTensor,
                 size_i: Optional[int]) -> Tensor:
 
-        # st1 = time.time()
-        #
-        # x_j_shp = x_j.size()
-        # msg_f = torch.zeros_like(self.msg_f)
-        # x_i_new = torch.zeros_like(self.x_r_new)
-
-        # ed1 = time.time()
-        # print(f'Time 1: {ed1 - st1}')
-
-        x_j = self.lin_l(x_j).view(-1, self.seq_len, self.heads, self.out_channels)
-        x_j = x_j.permute(1, 0, 2, 3)
-
-        # ed2 = time.time()
-        # print(f'Time 2: {ed2 - ed1}')
+        # x_j = self.lin_l(x_j).view(-1, self.seq_len, self.heads, self.out_channels)
+        x_j = x_j.view(-1, self.seq_len, self.seq_len, self.single_input_dim).view(-1, self.seq_len, self.seq_len * self.single_input_dim)
+        x_j = x_j.permute(1, 0, 2)
+        x_j_new = [self.lin_l[t](x_j[t]) for t in range(self.seq_len)]
+        x_j_new = torch.stack(x_j_new).view(self.seq_len, -1, self.heads, self.out_channels)
 
         x_i = x_i.view(-1, self.seq_len, self.single_input_dim)
         x_i = x_i.permute(1, 0, 2)
         x_i_new = [self.lin_r[t](x_i[t]) for t in range(self.seq_len)]
-        # x_i_new = self.lin_r[0](x_i).view(self.seq_len, -1, self.heads, self.out_channels)
 
-        # ed00 = time.time()
-        # print(f'Time 00: {ed00 - ed2}')
-        #
         x_i_new = torch.stack(x_i_new).view(self.seq_len, -1, self.heads, self.out_channels)
-
-        # for t in range(self.seq_len):
-        #     start = t * self.single_input_dim
-        #     end = (t+1) * self.single_input_dim
-        #
-        #     x_i_t = self.lin_r[t](x_i[:, start: end]).view(-1, self.heads, 16)
-        #
-        #     # x_i_t = x_i[:, :, start: end]
-        #     x_i_t = self.exp_lin(x_i_t)
-        #     x_i_new[t] = x_i_t
-        #
-            # x = x_i_t + x_j_t
-
-        # ed0 = time.time()
-        # print(f'Time 0: {ed0 - ed00}')
-
-        x = x_j + x_i_new
-
-        # ed3 = time.time()
-        # print(f'Time 3: {ed3 - ed0}')
+        x = x_i_new + x_j_new
 
         if edge_attr is not None:
             if edge_attr.dim() == 1:
@@ -371,28 +345,14 @@ class GATConvV8(MessagePassingV8):
 
             x = x + edge_attr
 
-        # ed4 = time.time()
-        # print(f'Time 4: {ed4 - ed3}')
-
         x = F.leaky_relu(x, self.negative_slope)
         alpha = (x * self.att).sum(dim=-1)
         alpha = softmax(alpha, index, ptr, size_i, dim=1)
         self._alpha = alpha
         alpha = F.dropout(alpha, p=self.dropout, training=self.training)
 
-        msg_t = x_j * alpha.unsqueeze(-1)
-
-        # ed5 = time.time()
-        # print(f'Time 5: {ed5 - ed4}')
-
+        msg_t = x_j_new * alpha.unsqueeze(-1)
         msg_f = msg_t.permute(1, 2, 0, 3).reshape(-1, self.heads, self.seq_len * self.out_channels)
-        # for t in range(self.seq_len):
-        #     start = t * self.out_channels
-        #     end = (t+1) * self.out_channels
-        #     msg_f[:, :, start: end] = msg_t[t]
-
-        # ed6 = time.time()
-        # print(f'Time 6: {ed6 - ed5}')
 
         return msg_f
 
