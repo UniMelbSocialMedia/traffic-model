@@ -96,14 +96,20 @@ class TransformerEncoder(nn.Module):
         for idx, x_all_t in enumerate(x_batch):
             semantic_edge_index, semantic_edge_attr = self.edge_details
             x_src = x_all_t.permute(1, 0, 2)  # N, T, F
+
+            x_dst = x_src.unsqueeze(dim=0).repeat(self.seq_len, 1, 1, 1)
+            mask = torch.tril(torch.ones((self.seq_len, self.seq_len))).unsqueeze(dim=1).repeat(1, x_src.shape[0], 1).unsqueeze(dim=-1).repeat(1, 1, 1, self.emb_dim).to(self.device)
+            x_dst = x_dst * mask
+            x_dst = x_dst.transpose(0, 1).reshape(x_src.shape[0], self.seq_len * self.seq_len * self.emb_dim)
+
             x_src = x_src.reshape(x_src.shape[0], -1)  # N, T*F
 
             if self.graph_input:
-                graph = self._create_graph((x_src, x_src), self.edge_index, self.edge_attr)
+                graph = self._create_graph((x_dst, x_src), self.edge_index, self.edge_attr)
                 x_batch_graphs.append(to(graph))
 
             if self.graph_semantic_input:
-                graph_semantic = self._create_graph((x_src, x_src), semantic_edge_index, semantic_edge_attr)
+                graph_semantic = self._create_graph((x_dst, x_src), semantic_edge_index, semantic_edge_attr)
                 x_batch_graphs_semantic.append(to(graph_semantic))
 
         return x_batch_graphs, x_batch_graphs_semantic
