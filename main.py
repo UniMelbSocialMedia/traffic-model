@@ -131,6 +131,7 @@ def prepare_data(model_configs: dict, data_configs: dict):
     model_configs['transformer']['encoder']['edge_attr'] = edge_attr
     model_configs['transformer']['encoder']['edge_details'] = edge_details
     model_configs['transformer']['encoder']['adj_mx'] = adj_mx
+    model_configs['transformer']['decoder']['adj_mx'] = adj_mx
     model_configs['transformer']['encoder']['num_nodes'] = data_configs['num_of_vertices']
     model_configs['transformer']['encoder']['batch_size'] = model_configs['batch_size']
     model_configs['transformer']['decoder']['num_nodes'] = data_configs['num_of_vertices']
