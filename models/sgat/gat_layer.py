@@ -1,7 +1,7 @@
 from torch import nn
 from torch_geometric.nn import GATConv, GATv2Conv
 
-from models.sgat.gat_conv.gat_conv_v8.gat_conv_v10 import GATConvV8
+from models.sgat.gat_conv.gat_conv_v8.gat_conv_v8 import GATConvV8
 
 
 class GATLayer(nn.Module):

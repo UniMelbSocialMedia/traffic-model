@@ -22,7 +22,7 @@ class GAT(nn.Module):
         edge_dim = configs['edge_dim']
         seq_len = configs['seq_len']
 
-        self.lin = nn.Linear(self.first_in_f_size, 64)
+        self.lin = nn.Linear(self.first_in_f_size, self.out_f_sizes[-1])
 
         self.layer_stack = nn.ModuleList()
         for l in range(self.n_layers):
