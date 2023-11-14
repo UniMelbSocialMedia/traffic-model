@@ -161,7 +161,7 @@ class TransformerEncoder(nn.Module):
                 out_g_semantic = self.graph_embedding_semantic(out_g_semantic)
 
             if self.graph_input and self.graph_semantic_input:
-                out_g = self.out_norm(out_g_dis + out_g_semantic)
+                out_g = out_g_dis + out_g_semantic
             elif self.graph_input and not self.graph_semantic_input:
                 out_g = out_g_dis
             elif not self.graph_input and self.graph_semantic_input:

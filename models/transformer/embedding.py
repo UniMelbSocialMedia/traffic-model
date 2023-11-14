@@ -24,5 +24,5 @@ class Embedding(nn.Module):
         if self.spatial_emb is not None:
             x = x + self.spatial_emb(x).repeat(1, x.size()[1], 1, 1)
         x = x + adp_emb
-        x = self.norm(x)
+        # x = self.norm(x)
         return x
