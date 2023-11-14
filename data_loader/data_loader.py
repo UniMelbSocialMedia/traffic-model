@@ -215,34 +215,34 @@ class DataLoader:
 
     def load_edge_data_file(self):
         try:
-            edge_weight_file = open(self.adj_file, 'rb')
-            adj_mx = pd.read_pickle(edge_weight_file)[2]
-
-            dst_edges = []
-            src_edges = []
-            edge_attr = []
-
-            for i, row in enumerate(adj_mx):
-                for j, col in enumerate(row):
-                    if col > 0 and i != j:
-                        src_edges.append(i)
-                        dst_edges.append(j)
-                        edge_attr.append(col)
-
-            # w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+            # edge_weight_file = open(self.adj_file, 'rb')
+            # adj_mx = pd.read_pickle(edge_weight_file)[2]
             #
             # dst_edges = []
             # src_edges = []
             # edge_attr = []
-            # for row in range(w.shape[0]):
-            #     # Drop edges with large distance between vertices. This adds incorrect attention in training time and
-            #     # degrade test performance (Over-fitting).
-            #     if float(w[row][2]) > self.distance_threshold:
-            #         continue
-            #     dst_edges.append(int(float(w[row][1])))
-            #     src_edges.append(int(float(w[row][0])))
-            #     edge_attr.append([float(w[row][2])])
             #
+            # for i, row in enumerate(adj_mx):
+            #     for j, col in enumerate(row):
+            #         if col > 0 and i != j:
+            #             src_edges.append(i)
+            #             dst_edges.append(j)
+            #             edge_attr.append(col)
+
+            w = pd.read_csv(self.edge_weight_filename, header=None).values[1:]
+
+            dst_edges = []
+            src_edges = []
+            edge_attr = []
+            for row in range(w.shape[0]):
+                # Drop edges with large distance between vertices. This adds incorrect attention in training time and
+                # degrade test performance (Over-fitting).
+                if float(w[row][2]) > self.distance_threshold:
+                    continue
+                dst_edges.append(int(float(w[row][1])))
+                src_edges.append(int(float(w[row][0])))
+                edge_attr.append([float(w[row][2])])
+
             edge_index = [src_edges, dst_edges]
             edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)
 
