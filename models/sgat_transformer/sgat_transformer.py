@@ -35,7 +35,7 @@ class SGATTransformer(nn.Module):
         decoder_configs['device'] = self.device
         self.decoder = TransformerDecoder(decoder_configs)
 
-        self.temporal_proj = nn.Linear(36, 12)
+        self.temporal_proj = nn.Linear(24, 12)
         self.output_proj = nn.Linear(64, 1)
 
     def _create_mask(self, batch_size, device):
@@ -59,19 +59,19 @@ class SGATTransformer(nn.Module):
             enc_out = encoder(x_i, time_idx, idx)
             enc_outs[idx] = enc_out
 
-        # enc_out = self.encoders[0](x[0], time_idx, 0).transpose(2, 3)
-        # out = self.temporal_proj(enc_out)
-        # out = self.output_proj(out.transpose(2, 3)).transpose(1, 2)
-        # return out
+        enc_out = self.encoders[0](x[0], time_idx, 0).transpose(2, 3)
+        out = self.temporal_proj(enc_out)
+        out = self.output_proj(out.transpose(2, 3)).transpose(1, 2)
+        return out
 
-        if train:
-            dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
-            return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
-        else:
-            dec_out_len = self.dec_seq_len - self.dec_seq_offset
-            for i in range(dec_out_len):
-                y_input = torch.tensor(y)
-                dec_out = self.decoder(y_input, enc_outs, tgt_mask=tgt_mask, device=self.device)
-                y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
-
-            return y[:, self.dec_seq_offset:, :, 0:1]
+        # if train:
+        #     dec_out = self.decoder(y, enc_outs, tgt_mask=tgt_mask, device=self.device)
+        #     return dec_out[:, self.dec_out_start_idx: self.dec_out_end_idx]
+        # else:
+        #     dec_out_len = self.dec_seq_len - self.dec_seq_offset
+        #     for i in range(dec_out_len):
+        #         y_input = torch.tensor(y)
+        #         dec_out = self.decoder(y_input, enc_outs, tgt_mask=tgt_mask, device=self.device)
+        #         y[:, i + self.dec_seq_offset, :, 0:1] = dec_out[:, i + self.dec_out_start_idx]
+        #
+        #     return y[:, self.dec_seq_offset:, :, 0:1]
