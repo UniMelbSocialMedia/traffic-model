@@ -237,14 +237,25 @@ class DataLoader:
             dst_edges = []
             src_edges = []
             edge_attr = []
+            adj = np.zeros((self.num_of_vertices, self.num_of_vertices))
             for row in range(w.shape[0]):
                 # Drop edges with large distance between vertices. This adds incorrect attention in training time and
                 # degrade test performance (Over-fitting).
                 if float(w[row][2]) > self.distance_threshold:
                     continue
-                dst_edges.append(int(float(w[row][1])))
-                src_edges.append(int(float(w[row][0])))
-                edge_attr.append([float(w[row][2])])
+                # dst_edges.append(int(float(w[row][1])))
+                # src_edges.append(int(float(w[row][0])))
+                # edge_attr.append([float(w[row][2])])
+                adj[int(float(w[row][0]))][int(float(w[row][1]))] = float(w[row][2])
+
+            adj_bipartite = np.zeros((self.num_of_vertices * 2, self.num_of_vertices * 2))
+            for i, row in enumerate(adj):
+                for j, col in enumerate(row):
+                    if col != 0:
+                        adj_bipartite[i][self.num_of_vertices + j] = col
+                        src_edges.append(i)
+                        dst_edges.append(self.num_of_vertices + j)
+                        edge_attr.append([col])
 
             edge_index = [src_edges, dst_edges]
             edge_attr = scale_weights(np.array(edge_attr), self.edge_weight_scaling, min_max=True)

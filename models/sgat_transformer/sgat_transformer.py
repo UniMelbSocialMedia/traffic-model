@@ -36,7 +36,7 @@ class SGATTransformer(nn.Module):
         self.decoder = TransformerDecoder(decoder_configs)
 
         self.temporal_proj = nn.Linear(24, 12)
-        self.output_proj = nn.Linear(16, 1)
+        self.output_proj = nn.Linear(self.emb_dim * 4, 1)
 
     def _create_mask(self, batch_size, device):
         trg_mask = torch.triu(torch.ones((self.dec_seq_len, self.dec_seq_len)))\
@@ -45,7 +45,7 @@ class SGATTransformer(nn.Module):
 
     def _create_enc_out(self, x):
         emb_dim = self.emb_dim if not self.merge_emb else self.emb_dim * self.enc_emb_expansion_factor
-        enc_outs = torch.zeros((self.enc_features, x[0].shape[0], x[0].shape[2], x[0].shape[1], 16))\
+        enc_outs = torch.zeros((self.enc_features, x[0].shape[0], x[0].shape[2], x[0].shape[1], self.emb_dim * 4))\
             .to(self.device)
         return enc_outs
 

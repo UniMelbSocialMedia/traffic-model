@@ -11,6 +11,8 @@ class GCN(nn.Module):
         self.n_layers = configs['n_layers']
         dropout_g = configs['dropout_g']
         self.seq_len = configs['seq_len']
+        self.emb_dim = configs['emb_dim']
+        num_nodes = configs['num_nodes']
 
         self.out_f_sizes = configs['out_f_sizes']
         n_heads = configs['n_heads']
@@ -22,7 +24,7 @@ class GCN(nn.Module):
         self.layer_stack = nn.ModuleList()
         for l in range(self.n_layers):
             in_f_size = self.out_f_sizes[l - 1] * n_heads[l - 1] if l else self.first_in_f_size
-            gcn_layer = GCNLayer(in_f_size, self.out_f_sizes[l])
+            gcn_layer = GCNLayer(in_f_size, self.out_f_sizes[l], seq_len=self.seq_len, emb_dim=self.emb_dim, num_nodes=num_nodes)
             self.layer_stack.append(gcn_layer)
 
     def forward(self, batch_data):
@@ -34,9 +36,7 @@ class GCN(nn.Module):
             for l, gcn_layer in enumerate(self.layer_stack):
                 x = gcn_layer(x,  edge_weight=edge_attr, edge_index=edge_index)
                 x = self.dropout(x)
-                x = x.reshape(x.size()[0], self.seq_len, -1)  # 307, 36, 288
                 # x = self.lin(x)
-                x = x.permute(1, 0, 2)  # 36, 307, 288
 
             out = (*out, x)
 

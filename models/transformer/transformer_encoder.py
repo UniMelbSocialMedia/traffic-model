@@ -17,11 +17,11 @@ class TransformerEncoder(nn.Module):
         self.emb_dim = configs['emb_dim']
         input_dim = configs['input_dim']
         self.merge_emb = configs['merge_emb']
-        emb_expansion_factor = configs['emb_expansion_factor']
         dropout_e_rep = configs['dropout_e_rep']
         dropout_e_normal = configs['dropout_e_normal']
         max_lookup_len = configs['max_lookup_len']
         self.lookup_idx = configs['lookup_idx']
+        num_nodes = configs['num_nodes']
 
         # graph related
         self.device = configs['device']
@@ -37,7 +37,9 @@ class TransformerEncoder(nn.Module):
         if enc_idx == 0:
             configs['sgat'] = configs['sgat_normal']
 
+        configs['sgat']['emb_dim'] = self.emb_dim
         configs['sgat']['seq_len'] = self.seq_len
+        configs['sgat']['num_nodes'] = num_nodes
         configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
         if self.graph_input:
             self.graph_embedding_dis = SGCNEmbedding(configs['sgat'])
@@ -48,7 +50,6 @@ class TransformerEncoder(nn.Module):
         n_layers = configs['n_layers']
 
         # embedding
-        num_nodes = configs['num_nodes']
         self.batch_size = configs['batch_size']
 
         self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
@@ -74,7 +75,7 @@ class TransformerEncoder(nn.Module):
         self.layers = nn.ModuleList(
             [EncoderBlock(configs['encoder_block']) for i in range(n_layers)])
 
-        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim)
+        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
         self.dropout_e_rep = nn.Dropout(dropout_e_rep)
         self.dropout_e_normal = nn.Dropout(dropout_e_normal)
 
