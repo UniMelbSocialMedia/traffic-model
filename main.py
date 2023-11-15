@@ -23,7 +23,7 @@ def _train(model, configs, lr, ls_fn, is_lr_sh=True, _train=True):
 
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer,
-            milestones=[10, 30],
+            milestones=[20, 30],
             gamma=0.1,
             verbose=False,
         )

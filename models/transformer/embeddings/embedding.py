@@ -1,8 +1,8 @@
 from torch import nn
 import torch
 
-from models.sgat.gcn import GCN
-from models.transformer.spatial_embedding import SpatialPositionalEncoding
+from models.transformer.embeddings.gcn_embedding import GCN
+from models.transformer.embeddings.spatial_embedding import SpatialPositionalEncoding
 
 
 class Embedding(nn.Module):

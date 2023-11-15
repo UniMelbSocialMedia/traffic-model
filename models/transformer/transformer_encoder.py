@@ -1,10 +1,10 @@
 import torch
 from torch import nn, Tensor
 
-from models.sgat.sgat_embedding import SGATEmbedding
+from models.sgcn.sgcn_embedding import SGCNEmbedding
 from models.transformer.positional_embedding import PositionalEmbedding
 from models.transformer.encoder_block import EncoderBlock
-from models.transformer.embedding import Embedding
+from models.transformer.embeddings.embedding import Embedding
 
 from torch_geometric.transforms import ToDevice
 import torch_geometric.data as data
@@ -33,28 +33,28 @@ class TransformerEncoder(nn.Module):
         self.seq_len = configs['seq_len']
         adj_mx = configs['adj_mx']
 
+        configs['sgat'] = configs['sgat_rep']
+        if enc_idx == 0:
+            configs['sgat'] = configs['sgat_normal']
+
+        configs['sgat']['seq_len'] = self.seq_len
+        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
+        if self.graph_input:
+            self.graph_embedding_dis = SGCNEmbedding(configs['sgat'])
+        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_sem']
+        if self.graph_semantic_input:
+            self.graph_embedding_semantic = SGCNEmbedding(configs['sgat'])
+
         n_layers = configs['n_layers']
 
         # embedding
         num_nodes = configs['num_nodes']
         self.batch_size = configs['batch_size']
-        configs['sgat'] = configs['sgat_rep']
-        if enc_idx == 0:
-            configs['sgat'] = configs['sgat_normal']
 
         self.embedding = Embedding(input_dim=input_dim, embed_dim=self.emb_dim, time_steps=self.seq_len,
                                    num_nodes=num_nodes, batch_size=self.batch_size, adj=adj_mx)
 
-        configs['sgat']['seq_len'] = self.seq_len
-
         # self.emb_dim = self.emb_dim * 2
-
-        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_dis']
-        if self.graph_input:
-            self.graph_embedding_dis = SGATEmbedding(configs['sgat'])
-        configs['sgat']['dropout_g'] = configs['sgat']['dropout_g_sem']
-        if self.graph_semantic_input:
-            self.graph_embedding_semantic = SGATEmbedding(configs['sgat'])
 
         # convolution related
         self.local_trends = configs['local_trends']
@@ -74,17 +74,12 @@ class TransformerEncoder(nn.Module):
         self.layers = nn.ModuleList(
             [EncoderBlock(configs['encoder_block']) for i in range(n_layers)])
 
-        # by merging embeddings we increase the output dimension
-        if self.merge_emb:
-            self.emb_dim = self.emb_dim * emb_expansion_factor
-        self.out_norm = nn.LayerNorm(self.emb_dim * 4)
-
-        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim * 4)
+        self.out_e_lin = nn.Linear(self.emb_dim, self.emb_dim)
         self.dropout_e_rep = nn.Dropout(dropout_e_rep)
         self.dropout_e_normal = nn.Dropout(dropout_e_normal)
 
     def _create_graph(self, x, edge_index, edge_attr):
-        graph = data.Data(x=(Tensor(x[0]), Tensor(x[1])),
+        graph = data.Data(x=(Tensor(x[0])),
                           edge_index=torch.LongTensor(edge_index),
                           y=None,
                           edge_attr=Tensor(edge_attr))
@@ -98,12 +93,6 @@ class TransformerEncoder(nn.Module):
         for idx, x_all_t in enumerate(x_batch):
             semantic_edge_index, semantic_edge_attr = self.edge_details
             x_src = x_all_t.permute(1, 0, 2)  # N, T, F
-
-            # x_dst = x_src.unsqueeze(dim=0).repeat(self.seq_len, 1, 1, 1)
-            # mask = torch.tril(torch.ones((self.seq_len, self.seq_len))).unsqueeze(dim=1).repeat(1, x_src.shape[0], 1).unsqueeze(dim=-1).repeat(1, 1, 1, self.emb_dim).to(self.device)
-            # x_dst = x_dst * mask
-            # x_dst = x_dst.transpose(0, 1).reshape(x_src.shape[0], self.seq_len * self.seq_len * self.emb_dim)
-
             x_src = x_src.reshape(x_src.shape[0], -1)  # N, T*F
 
             if self.graph_input:
@@ -149,14 +138,10 @@ class TransformerEncoder(nn.Module):
 
             graph_x = graph_x.reshape(x.shape[0], x.shape[2], x.shape[1], graph_x.shape[-1])
             graph_x = graph_x.permute(0, 2, 1, 3)
-            graph_x_shp = graph_x.shape
             out_g_dis, out_g_semantic = self._derive_graphs(graph_x, x_time_idx)
 
             if self.graph_input:
-                batch_size, time_steps, num_nodes, features = graph_x_shp
                 out_g_dis = self.graph_embedding_dis(out_g_dis)  # (4, 307, 576)
-                # out_g_dis = out_g_dis.reshape(batch_size, num_nodes, time_steps, -1)  # (4, 307, 12, 16)
-                # out_g_dis = out_g_dis.permute(0, 2, 1, 3)  # (4, 12, 307, 16)
             if self.graph_semantic_input:
                 out_g_semantic = self.graph_embedding_semantic(out_g_semantic)
 
