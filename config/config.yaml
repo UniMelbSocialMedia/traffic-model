@@ -16,7 +16,7 @@ model:
       n_layers: 4 # # of temporal encoder layers
       local_trends: True # decides whether the temporal encoder apply convolution to distinguish local trends in time series data
       graph_semantic_input: False # to enable semantics based graph
-      graph_input: False # to enable distance based graph
+      graph_input: True # to enable distance based graph
       dropout_e_normal: 0.0 # dropout applied to the final output of temporal encoder layer of the first encoder
       dropout_e_rep: 0.2 # dropout applied to the final output of temporal encoder layer of the second encoder (representative time sequence)
       encoder_block: # temporal encoder layer configs

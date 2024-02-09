@@ -25,7 +25,7 @@ def load_rep_vector(node_data_filename, output_filename, load_file=False):
         return records_time_idx
 
     points_per_hour = 12
-    num_of_vertices = 307
+    num_of_vertices = 883
     num_of_weeks = 1
     num_of_days = 1
     num_of_hours = 1
@@ -62,16 +62,16 @@ def load_rep_vector(node_data_filename, output_filename, load_file=False):
 
         sample = None
         if num_of_hours > 0:
-            sample = hour_sample[:, :, [0, 3]]  # get traffic flow val and weekly time-idx
+            sample = hour_sample[:, :, [0, 1]]  # get traffic flow val and weekly time-idx
 
         if num_of_days > 0:
-            sample = np.concatenate((sample, day_sample[:, :, [0, 3]]), axis=2)
+            sample = np.concatenate((sample, day_sample[:, :, [0, 1]]), axis=2)
 
         if num_of_weeks > 0:
-            sample = np.concatenate((sample, week_sample[:, :, [0, 3]]), axis=2)
+            sample = np.concatenate((sample, week_sample[:, :, [0, 1]]), axis=2)
 
         all_samples.append(sample)
-        all_targets.append(target[:, :, [0, 3]])
+        all_targets.append(target[:, :, [0, 1]])
 
     split_line1 = int(len(all_samples) * 0.6)
     training_x_set = np.array(all_samples[:split_line1])
@@ -149,16 +149,16 @@ def find_most_similar_sensors(data, n=10):
 
 if __name__ == '__main__':
 
-    graph_signal_matrix_filename = "../data/PEMS04/PEMS04.npz"
-    rep_output_file = "../data/PEMS04/PEMS04_rep_vector.pickle"
-    semantic_rels_output_file = "../data/PEMS04/PEMS04_time_idx_semantic_rels.pickle"
-    edge_details_file = "../data/PEMS04/PEMS04_time_idx_semantic_edges.pickle"
+    graph_signal_matrix_filename = "../data/PEMS07/PEMS07.npz"
+    rep_output_file = "/data/PEMS07_rep_vector.pickle"
+    semantic_rels_output_file = "../data/PEMS07/PEMS07_time_idx_semantic_rels.pickle"
+    edge_details_file = "../data/PEMS07/PEMS07_time_idx_semantic_edges.pickle"
     records_time_idx = load_rep_vector(graph_signal_matrix_filename, rep_output_file, load_file=False)
 
-    n_sensors = 307
+    n_sensors = 883
     semantic_rels = {}
 
-    for sensor in range(0, n_sensors):
+    for sensor in range(0, 250):
         time_idx_distances = []
         time_idx_sensors = []
 
