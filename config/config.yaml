@@ -9,7 +9,7 @@ model:
   device: cuda # decides GPU or CPU for training
   transformer:
     encoder:
-      features: 2 # To indicates multiple encoders (feature-wise). default is 1. =2 when rep_vector is True
+      features: 1 # To indicates multiple encoders (feature-wise). default is 1. =2 when rep_vector is True
       emb_dim: 16 # dimension that embedding layer maps the input of the model to.
       seq_len: 36 # input sequence length
       input_dim: 2 # input dimension, inputs is traffic flow value, in some dataset it may be combined with time index
@@ -48,7 +48,7 @@ model:
       decoder_block: # temporal decoder layer configs
         n_heads: 8
         expansion_factor: 4
-        cross_attn_features: 2 # Used to indicates how many feature-wise cross attentions in the decoder. This value=2 when rep_vector is True. otherwise 1.
+        cross_attn_features: 1 # Used to indicates how many feature-wise cross attentions in the decoder. This value=2 when rep_vector is True. otherwise 1.
         src_dropout: 0.3
         cross_attn_dropout: [0.3, 0.3]
         ff_dropout: 0.2
@@ -71,7 +71,7 @@ data:
   rep_vectors: False # to derive representative traffic sequence
   rep_vector_from_file: True # to derive representative traffic sequence
   rep_vector_filename: "data/PEMS07/PEMS07_rep_vector.pickle" # save representative traffic sequence values
-  preprocess: True # to start preprocessing stages
+  preprocess: False # to start preprocessing stages
   preprocess_output_path: "/data/PEMS07_Preprocessed.pickle"
   distance_threshold: 2000 # distance threshold to drop longer irrelevant connections in distance based graphs
   semantic_threashold: 5 # # of semantically similar neighbours in semantic based graph.
