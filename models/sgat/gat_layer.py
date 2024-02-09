@@ -15,7 +15,7 @@ class GATLayer(nn.Module):
 
         if edge_dim == -1:
             self.conv = GATv2Conv([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
-                                  concat=concat, seq_len=seq_len)
+                                  concat=concat)
         else:
             self.conv = GATv2Conv([in_features, in_features], out_features, heads=n_heads, dropout=dropout,
                                   concat=concat, edge_dim=edge_dim)
