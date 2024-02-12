@@ -161,16 +161,16 @@ class DataLoader:
 
             sample = None
             if self.num_of_hours > 0:
-                sample = hour_sample[:, :, [0, 1]]  # get traffic flow val and weekly time-idx
+                sample = hour_sample[:, :, [0, 3]]  # get traffic flow val and weekly time-idx
 
             if self.num_of_days > 0:
-                sample = np.concatenate((sample, day_sample[:, :, [0, 1]]), axis=2)
+                sample = np.concatenate((sample, day_sample[:, :, [0, 3]]), axis=2)
 
             if self.num_of_weeks > 0:
-                sample = np.concatenate((sample, week_sample[:, :, [0, 1]]), axis=2)
+                sample = np.concatenate((sample, week_sample[:, :, [0, 3]]), axis=2)
 
             all_samples.append(sample)
-            all_targets.append(target[:, :, [0, 1]])
+            all_targets.append(target[:, :, [0, 3]])
 
         split_line1 = int(len(all_samples) * 0.6)
         split_line2 = int(len(all_samples) * 0.8)
@@ -321,32 +321,10 @@ class DataLoader:
         if _type != 'train':
             ys_input[:, self.dec_seq_offset:, :, 0:1] = 0
 
-        # reshaping
-        xs_shp = xs.shape
-        input_dim_per_record = 2 if self.time_idx_enc_feature else 1
-        xs = np.reshape(xs, (xs_shp[0], xs_shp[1], xs_shp[2], self.num_f, input_dim_per_record))  # (4, 12, 307, 12) -> (4, 12, 307, 6, 2)
-
-        # self.enc_features use to determine whether model accept representative time sequence as input
-        num_inner_f_enc = int(xs.shape[-2] / self.enc_features)
-        enc_xs = []
-        for k in range(self.enc_features):
-            batched_xs = [[] for i in range(self.batch_size)]
-
-            for idx, x_timesteps in enumerate(xs):
-                seq_len = xs.shape[1]
-                tmp_xs = np.zeros((seq_len * num_inner_f_enc, xs.shape[2], input_dim_per_record))
-                for inner_f in range(num_inner_f_enc):
-                    start_idx = (k * num_inner_f_enc) + num_inner_f_enc - inner_f - 1
-                    end_idx = start_idx + 1
-
-                    tmp_xs_start_idx = seq_len * inner_f
-                    tmp_xs_end_idx = seq_len * inner_f + seq_len
-                    tmp_xs[tmp_xs_start_idx: tmp_xs_end_idx] = np.squeeze(x_timesteps[:, :, start_idx: end_idx], axis=-2)
-
-                batched_xs[idx] = torch.Tensor(tmp_xs).to(device)
-
-            batched_xs = torch.stack(batched_xs)
-            enc_xs.append(batched_xs)
+        enc_xs_1 = np.concatenate((xs[:, :, :, 0:2], xs[:, :, :, 6:7]), axis=-1)
+        enc_xs_2 = np.concatenate((xs[:, :, :, 2:4], xs[:, :, :, 8:9]), axis=-1)
+        enc_xs_3 = np.concatenate((xs[:, :, :, 4:6], xs[:, :, :, 10:11]), axis=-1)
+        enc_xs = torch.unsqueeze(torch.Tensor(np.concatenate((enc_xs_1, enc_xs_2, enc_xs_3), axis=1)).to(device), dim=0)
 
         dec_ys = [[] for i in range(self.batch_size)]  # decoder input
         dec_ys_target = [[] for i in range(self.batch_size)]  # This is used as the ground truth data

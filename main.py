@@ -131,7 +131,7 @@ def prepare_data(model_configs: dict, data_configs: dict):
     dec_seq_len = model_configs['transformer']['decoder']['seq_len']
     enc_seq_len = model_configs['transformer']['encoder']['seq_len']
 
-    data_configs['time_idx_enc_feature'] = True if model_configs['transformer']['encoder']['input_dim'] == 2 else False
+    data_configs['time_idx_enc_feature'] = True if model_configs['transformer']['encoder']['input_dim'] == 3 else False
     data_configs['time_idx_dec_feature'] = True if model_configs['transformer']['decoder']['input_dim'] == 2 else False
     data_loader = DataLoader(data_configs)
     data_loader.load_node_data_file()
